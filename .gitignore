@@ -1,0 +1,24 @@
+# Artefacte build
+build/
+*.o
+*.a
+
+# Kernel
+kernel/linux-*/
+kernel/linux-*.tar.xz
+kernel/scripts/
+
+# Initramfs
+initramfs/build/
+initramfs/src/init/init
+initramfs/src/msh/msh
+
+# ISO output
+*.iso
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
