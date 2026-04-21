@@ -37,16 +37,20 @@ static void scrie(int fd, const char *s) {
 static void out(const char *s) { scrie(1, s); }
 static void err(const char *s) { scrie(2, s); }
 
-/* Citeste o linie de la stdin, max-1 octeti, terminata cu \n.
- * Intoarce lungimea (>=0) sau -1 la EOF / eroare. */
-static int citeste_linie(char *buf, size_t max) {
+/* Citeste o linie de la fd, max-1 octeti, terminata cu \n.
+ * Intoarce lungimea (>=0) sau -1 la EOF / eroare.
+ * interactiv=1 → tratam backspace/DEL; interactiv=0 → citire cruda (script). */
+static int citeste_linie(int fd, char *buf, size_t max, int interactiv) {
     size_t n = 0;
     char c;
     for (;;) {
-        ssize_t r = read(0, &c, 1);
-        if (r <= 0) return -1;
+        ssize_t r = read(fd, &c, 1);
+        if (r <= 0) {
+            if (n == 0) return -1;
+            break;
+        }
         if (c == '\n') break;
-        if (c == '\b' || c == 0x7f) {
+        if (interactiv && (c == '\b' || c == 0x7f)) {
             if (n > 0) n--;
             continue;
         }
@@ -73,9 +77,11 @@ static int parseaza(char *linie, char **argv, int max) {
 /* ===== Builtins ===== */
 
 static int bi_exit(char **argv) {
-    (void)argv;
-    out(MSH_BYE);
-    exit(0);
+    int cod = 0;
+    if (argv[1]) cod = atoi(argv[1]);
+    /* Banner de iesire doar in mod interactiv (stdin tty) */
+    if (isatty(0)) out(MSH_BYE);
+    exit(cod);
 }
 
 static int bi_help(char **argv) {
@@ -177,30 +183,57 @@ static int executa_extern(char **argv) {
     return 1;
 }
 
-int main(void) {
+/* Executa linii citite din fd (fie stdin interactiv, fie script). */
+static int ruleaza_din(int fd, int interactiv) {
     char linie[MAX_LINIE];
     char *argv[MAX_ARG];
+    int ultim_rc = 0;
 
-    out(MSH_BANNER);
-    out("Tasteaza 'help' pentru lista de comenzi.\n\n");
+    if (interactiv) {
+        out(MSH_BANNER);
+        out("Tasteaza 'help' pentru lista de comenzi.\n\n");
+    }
 
     for (;;) {
-        out(MSH_PROMPT);
-        int n = citeste_linie(linie, sizeof(linie));
+        if (interactiv) out(MSH_PROMPT);
+        int n = citeste_linie(fd, linie, sizeof(linie), interactiv);
         if (n < 0) {
-            /* EOF — iesim curat */
-            out("\n");
+            if (interactiv) out("\n");
             break;
         }
         if (n == 0) continue;
 
-        int argc = parseaza(linie, argv, MAX_ARG);
+        /* Trim leading whitespace pentru detectie shebang/comentariu */
+        char *l = linie;
+        while (*l == ' ' || *l == '\t') l++;
+        if (*l == '\0' || *l == '#') continue;
+
+        int argc = parseaza(l, argv, MAX_ARG);
         if (argc == 0) continue;
 
         int rc = gaseste_si_ruleaza_builtin(argv);
         if (rc < 0) rc = executa_extern(argv);
-        (void)rc;  /* $? vine in faza urmatoare */
+        ultim_rc = rc;
     }
 
-    return 0;
+    return ultim_rc;
+}
+
+int main(int argc, char **argv) {
+    if (argc >= 2) {
+        /* Mod script: msh <fisier> */
+        int fd = open(argv[1], O_RDONLY);
+        if (fd < 0) {
+            err("msh: nu pot deschide ");
+            err(argv[1]);
+            err(": ");
+            err(strerror(errno));
+            err("\n");
+            return 127;
+        }
+        int rc = ruleaza_din(fd, 0);
+        close(fd);
+        return rc;
+    }
+    return ruleaza_din(0, isatty(0));
 }

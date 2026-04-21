@@ -1,0 +1,6 @@
+# LUPBUILD — pachet demo: hello (script shell)
+nume=hello
+versiune=1.0
+arhitectura=any
+descriere=Salutari din CarpatOS (script shell)
+depinde=

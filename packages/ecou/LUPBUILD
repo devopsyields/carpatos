@@ -1,0 +1,6 @@
+# LUPBUILD — pachet demo: ecou (echo in C)
+nume=ecou
+versiune=1.0
+arhitectura=x86_64
+descriere=Afiseaza argumentele separate prin spatiu (echo in C)
+depinde=

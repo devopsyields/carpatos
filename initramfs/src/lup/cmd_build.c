@@ -30,9 +30,12 @@ int cmd_build(int argc, char **argv) {
     }
     const char *src = argv[0];
     const char *out = NULL;
+    const char *arh_override = NULL;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             out = argv[++i];
+        } else if (strcmp(argv[i], "--arch") == 0 && i + 1 < argc) {
+            arh_override = argv[++i];
         }
     }
 
@@ -43,6 +46,7 @@ int cmd_build(int argc, char **argv) {
     }
     Manifest m;
     if (citeste_lupbuild(cale_lupbuild, &m) < 0) return 1;
+    if (arh_override) snprintf(m.arhitectura, sizeof(m.arhitectura), "%s", arh_override);
 
     char cale_build[MAX_CALE + 64];
     if ((size_t)snprintf(cale_build, sizeof(cale_build),

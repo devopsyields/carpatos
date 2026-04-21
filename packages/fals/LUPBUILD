@@ -1,0 +1,6 @@
+# LUPBUILD — pachet demo: fals (exit 1)
+nume=fals
+versiune=1.0
+arhitectura=x86_64
+descriere=Intoarce intotdeauna esec (exit 1)
+depinde=
