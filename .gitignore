@@ -12,6 +12,12 @@ kernel/scripts/
 initramfs/build/
 initramfs/src/init/init
 initramfs/src/msh/msh
+initramfs/src/lup/lup
+initramfs/src/lup/lup_test
+initramfs/src/lup/*.o
+
+# Pachete
+packages/build/
 
 # ISO output
 *.iso

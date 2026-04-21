@@ -1,61 +1,71 @@
-# Makefile — CarpatOS (top-level)
+# Makefile — CarpatOS (top-level, multi-arch)
 #
 # Tinte:
-#   make              — construieste tot (kernel + initramfs + ISO)
-#   make kernel       — doar kernelul
-#   make initramfs    — doar initramfs
-#   make iso          — construieste ISO-ul
-#   make run          — ruleaza in QEMU (boot direct, fara ISO)
-#   make run-iso      — ruleaza ISO-ul in QEMU (BIOS)
-#   make run-uefi     — ruleaza ISO-ul in QEMU (UEFI)
-#   make clean        — sterge artefacte de build
-#   make distclean    — sterge tot, inclusiv sursa kernelului
+#   make [ARCH=x86_64|aarch64]  — construieste tot pentru o arhitectura
+#   make kernel                  — doar kernelul
+#   make initramfs               — doar initramfs
+#   make iso                     — construieste ISO-ul
+#   make run                     — boot direct in QEMU (fara ISO, rapid)
+#   make run-iso                 — ruleaza ISO in QEMU (BIOS pe x86, UEFI pe arm)
+#   make run-uefi                — ruleaza ISO in QEMU (UEFI explicit)
+#   make packages                — construieste pachetele demo
+#   make clean                   — sterge artefacte de build
+#   make distclean               — sterge tot, inclusiv sursa kernelului
 #
-# Toolchain recomandat: ruleaza din containerul toolchain/
+# Implicit ARCH=x86_64. Pentru aarch64 ruleaza:
+#   make ARCH=aarch64
+#
+# Toolchain recomandat: containerul toolchain/
 #   docker build -t carpatos-toolchain toolchain/
 #   docker run --rm -it -v $(pwd):/src -w /src carpatos-toolchain
-#   (in container:) make
 
-.PHONY: all kernel initramfs iso run run-iso run-uefi clean distclean help
+ARCH ?= x86_64
+export ARCH
+
+.PHONY: all kernel initramfs iso run run-iso run-uefi packages clean distclean help
 
 all: kernel initramfs iso
 
 kernel:
-	$(MAKE) -C kernel
+	$(MAKE) -C kernel ARCH=$(ARCH)
 
 initramfs:
-	$(MAKE) -C initramfs
+	$(MAKE) -C initramfs ARCH=$(ARCH)
 
 iso: kernel initramfs
-	./scripts/build-iso.sh
+	./scripts/build-iso.sh $(ARCH)
 
 run: kernel initramfs
-	./scripts/run-qemu.sh direct
+	./scripts/run-qemu.sh $(ARCH) direct
 
 run-iso: iso
-	./scripts/run-qemu.sh iso
+	./scripts/run-qemu.sh $(ARCH) iso
 
 run-uefi: iso
-	./scripts/run-qemu.sh uefi
+	./scripts/run-qemu.sh $(ARCH) uefi
+
+packages:
+	./scripts/build-packages.sh $(ARCH)
 
 clean:
 	$(MAKE) -C kernel clean
 	$(MAKE) -C initramfs clean
-	rm -rf build
+	rm -rf build packages/build
 
 distclean:
 	$(MAKE) -C kernel distclean
 	$(MAKE) -C initramfs clean
-	rm -rf build
+	rm -rf build packages/build
 
 help:
-	@echo "CarpatOS — tinte disponibile:"
-	@echo "  make              — construieste tot"
-	@echo "  make kernel       — doar kernelul Linux"
-	@echo "  make initramfs    — doar initramfs"
-	@echo "  make iso          — genereaza ISO-ul bootabil"
-	@echo "  make run          — ruleaza direct in QEMU (rapid)"
-	@echo "  make run-iso      — ruleaza ISO in QEMU (BIOS)"
-	@echo "  make run-uefi     — ruleaza ISO in QEMU (UEFI)"
-	@echo "  make clean        — sterge artefactele de build"
-	@echo "  make distclean    — sterge tot"
+	@echo "CarpatOS — tinte (ARCH=$(ARCH)):"
+	@echo "  make [ARCH=x86_64|aarch64]  — construieste tot"
+	@echo "  make kernel                  — doar kernelul"
+	@echo "  make initramfs               — doar initramfs"
+	@echo "  make iso                     — genereaza ISO bootabil"
+	@echo "  make run                     — boot direct in QEMU"
+	@echo "  make run-iso                 — boot ISO (BIOS pe x86)"
+	@echo "  make run-uefi                — boot ISO (UEFI)"
+	@echo "  make packages                — construieste pachetele demo"
+	@echo "  make clean                   — sterge build"
+	@echo "  make distclean               — sterge tot"

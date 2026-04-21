@@ -1,6 +1,7 @@
 # Makefile — msh CarpatOS
 
-CC       ?= x86_64-linux-musl-gcc
+ARCH     ?= x86_64
+CC       ?= $(ARCH)-linux-musl-gcc
 CFLAGS   := -std=c11 -Wall -Wextra -Werror -O2 \
             -fno-stack-protector -fno-pie \
             -I../common
