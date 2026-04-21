@@ -6,20 +6,21 @@
 
 ## Stadiu
 
-**Faza 1 — MVP bootabil.** Sistem care porneste in QEMU (BIOS sau UEFI),
-monteaza pseudo-filesystem-urile, si prezinta un shell minim (`msh`).
-Nu include inca bash, grep, ls etc — acestea vor fi adaugate ca pachete
-prin `lup` in fazele urmatoare.
+**Faza 1 + package manager.** Sistem care porneste in QEMU sau
+Parallels (BIOS sau UEFI), monteaza pseudo-filesystem-urile, si prezinta
+un shell minim (`msh`). `lup`, package managerul, functioneaza si are
+patru pachete demo. Suport multi-arch pentru **x86_64** si **aarch64**.
 
 ## Componente
 
 | Componenta | Ce este | Unde |
 |---|---|---|
 | Kernel | Linux vanilla (6.12 LTS), config minimal | `kernel/` |
-| Bootloader | Limine (BIOS+UEFI) | `boot/` |
+| Bootloader | Limine (BIOS+UEFI pe x86_64, UEFI pe aarch64) | `boot/` |
 | init (PID 1) | Propriu, C + musl static | `initramfs/src/init/` |
-| msh | Shell minim propriu | `initramfs/src/msh/` |
-| lup | Package manager (Faza 3) | — |
+| msh | Shell minim (interactiv + script mode) | `initramfs/src/msh/` |
+| lup | Package manager (`install`/`remove`/`build`/...) | `initramfs/src/lup/` |
+| Pachete demo | `hello`, `adevarat`, `fals`, `ecou` | `packages/` |
 | libc | musl, static linked | (inclus in toolchain) |
 
 ## Quick start
@@ -39,21 +40,32 @@ docker run --rm -it -v "$(pwd):/src" -w /src carpatos-toolchain
 ### 3. In container: construieste tot
 
 ```bash
-make            # kernel + initramfs + ISO
+make                        # kernel + initramfs + ISO (x86_64 implicit)
+make ARCH=aarch64           # idem pentru aarch64
+make ARCH=aarch64 packages  # construieste pachetele demo
 ```
 
 Prima compilare a kernelului dureaza ~5-15 minute (depinde de CPU).
-Urmatoarele sunt mult mai rapide (incrementale).
+Urmatoarele sunt mult mai rapide (incrementale). Cele doua arhitecturi
+au build-uri separate (`build/x86_64/`, `build/aarch64/`) care nu
+se afecteaza reciproc.
 
 ### 4. Ruleaza in QEMU
 
 ```bash
-make run        # boot direct kernel+initramfs (rapid)
-make run-iso    # testare completa prin Limine (BIOS)
-make run-uefi   # testare completa prin Limine (UEFI, necesita OVMF)
+make run                    # boot direct kernel+initramfs (rapid), x86_64
+make ARCH=aarch64 run       # acelasi, aarch64
+make run-iso                # testare completa prin Limine (BIOS pe x86_64)
+make ARCH=aarch64 run-iso   # aarch64 (UEFI via AAVMF)
+make run-uefi               # x86_64 explicit UEFI (OVMF)
 ```
 
 Pentru a iesi din QEMU: `Ctrl+A` apoi `X`.
+
+### 5. Parallels Desktop (Apple Silicon)
+
+Pentru a rula ISO-ul aarch64 in Parallels pe Mac, vezi
+[docs/PARALLELS.md](docs/PARALLELS.md).
 
 ## Ce ar trebui sa vezi la primul boot
 
@@ -74,15 +86,10 @@ Pentru a iesi din QEMU: `Ctrl+A` apoi `X`.
 msh — shell minim CarpatOS
 Tasteaza 'help' pentru lista de comenzi.
 
-carpatos# help
-Builtins disponibile:
-  exit       — iesire din shell
-  help       — acest mesaj
-  cd [dir]   — schimba directorul curent
-  pwd        — afiseaza directorul curent
-  echo ...   — afiseaza argumentele
-  versiune   — versiunea CarpatOS
-...
+carpatos# lup install hello
+Instalez hello-1.0 (din /var/lup/repos/carpatos-core/hello-1.0-any.lup)
+carpatos# hello
+Salut din CarpatOS!
 carpatos#
 ```
 
@@ -90,31 +97,41 @@ carpatos#
 
 ```
 carpatos/
-├── Makefile              # orchestrare top-level
-├── toolchain/            # Dockerfile + toolchain reproducibil
-├── kernel/               # build Linux kernel custom
+├── Makefile              # orchestrare top-level, ARCH=x86_64|aarch64
+├── toolchain/            # Dockerfile + toolchain reproducibil (ambele arh)
+├── kernel/               # build Linux kernel custom, multi-arch
 ├── boot/                 # config Limine
 ├── initramfs/
 │   ├── src/
 │   │   ├── init/         # /init (PID 1)
-│   │   ├── msh/          # shell minim
+│   │   ├── msh/          # shell minim + mod script
+│   │   ├── lup/          # package manager `lup`
 │   │   └── common/       # headere comune (mesaje)
 │   └── rootfs/           # schelet filesystem (etc, dev, proc, etc)
+├── packages/             # pachete demo (LUPBUILD + build.sh)
+│   ├── hello/            # script shell
+│   ├── adevarat/         # binar C: exit 0
+│   ├── fals/             # binar C: exit 1
+│   └── ecou/             # binar C: echo minim
 ├── scripts/
-│   ├── build-iso.sh      # generare ISO hibrid BIOS+UEFI
-│   └── run-qemu.sh       # wrapper QEMU
+│   ├── build-iso.sh      # genereaza ISO (BIOS+UEFI pe x86, UEFI pe arm)
+│   ├── build-packages.sh # construieste pachetele demo
+│   └── run-qemu.sh       # wrapper QEMU multi-arch
 └── docs/
     ├── INSTALARE.md
-    ├── CONSTRUIRE.md
-    └── ARHITECTURA.md
+    ├── CONSTRUIRE.md     # multi-arch build + run
+    ├── ARHITECTURA.md
+    ├── LUPBUILD.md       # formatul .lup + scrierea pachetelor
+    └── PARALLELS.md      # boot in Parallels Desktop (Apple Silicon)
 ```
 
 ## Roadmap
 
 - [x] **Faza 0** — Toolchain reproducibil (Docker + musl-cross + Limine)
 - [x] **Faza 1** — Boot MVP: kernel + init + msh minimal
-- [ ] **Faza 2** — msh complet: pipes, redirecturi, scripturi
-- [ ] **Faza 3** — Package manager `lup` + primele pachete (bash, coreutils, grep)
+- [x] **Faza A–F** — Package manager `lup` + pachete demo + multi-arch
+- [ ] **Faza 2** — msh complet: pipes, redirecturi, variabile (partial — mod script exista)
+- [ ] **Faza 3** — Port de coreutils minimal (bash, grep, ls) ca pachete `lup`
 - [ ] **Faza 4** — Instalator TUI pentru hardware real
 - [ ] **Faza 5** — Stack retea, `lup` cu repo-uri HTTP
 - [ ] **Faza 6+** — Framebuffer grafic, compositor, desktop stil macOS
