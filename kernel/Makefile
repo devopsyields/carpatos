@@ -43,7 +43,10 @@ else ifeq ($(ARCH),aarch64)
     --enable  CONFIG_PCI_HOST_GENERIC \
     --enable  CONFIG_ARM_PSCI \
     --enable  CONFIG_ARM_AMBA \
-    --enable  CONFIG_OF
+    --enable  CONFIG_OF \
+    --enable  CONFIG_DRM \
+    --enable  CONFIG_DRM_VIRTIO_GPU \
+    --enable  CONFIG_DRM_FBDEV_EMULATION
 else
   $(error ARCH necunoscut: $(ARCH). Foloseste x86_64 sau aarch64)
 endif
