@@ -5,9 +5,9 @@
 #   ./scripts/build-packages.sh [arch]
 #     arch: x86_64 (implicit) | aarch64 | any
 #
-# Iesire: packages/build/<arch>/<nume>-<ver>-<arh>.lup
+# Iesire: packages/build/<arch>/<nume>-<ver>-<arh>.cpm
 #
-# Dependente: `lup` compilat pentru host (nu pentru tinta) si
+# Dependente: `cpm` compilat pentru host (nu pentru tinta) si
 # toolchain-ul cross `<arch>-linux-musl-gcc` pentru pachetele native.
 # Pachetul `hello` (arh=any) nu are nevoie de cross-compiler.
 set -euo pipefail
@@ -23,19 +23,19 @@ case "$ARCH" in
 esac
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-LUP_SRC="$ROOT/initramfs/src/lup"
+CPM_SRC="$ROOT/initramfs/src/cpm"
 OUT_DIR="$ROOT/packages/build/$ARCH"
-LUP_BIN="$LUP_SRC/lup_host"
+CPM_BIN="$CPM_SRC/cpm_host"
 
 mkdir -p "$OUT_DIR"
 
-# Compileaza `lup` pentru host daca nu exista deja
-if [[ ! -x "$LUP_BIN" ]]; then
-    echo "==> Construiesc lup pentru host (pentru operatii de build)"
+# Compileaza `cpm` pentru host daca nu exista deja
+if [[ ! -x "$CPM_BIN" ]]; then
+    echo "==> Construiesc cpm pentru host (pentru operatii de build)"
     (
-        cd "$LUP_SRC"
+        cd "$CPM_SRC"
         cc -std=c11 -Wall -Wextra -O2 -I../common \
-           -o lup_host main.c util.c manifest.c tar.c pkg.c db.c repo.c \
+           -o cpm_host main.c util.c manifest.c tar.c pkg.c db.c repo.c \
            cmd_install.c cmd_remove.c cmd_query.c cmd_build.c
     )
 fi
@@ -46,21 +46,21 @@ construieste() {
     local dir="$ROOT/packages/$pachet"
     [[ -d "$dir" ]] || { echo "Pachet lipsa: $dir" >&2; exit 1; }
 
-    echo "==> Construiesc $pachet (arh=${override_arh:-<din LUPBUILD>})"
+    echo "==> Construiesc $pachet (arh=${override_arh:-<din CPMBUILD>})"
     local argv=("$dir")
     if [[ -n "$override_arh" ]]; then
         argv+=("--arch" "$override_arh")
     fi
     (
         cd "$OUT_DIR"
-        "$LUP_BIN" build "${argv[@]}"
+        "$CPM_BIN" build "${argv[@]}"
     )
 }
 
-# hello e script, arh=any din LUPBUILD — fara override
+# hello e script, arh=any din CPMBUILD — fara override
 construieste hello
 
-# Pachetele native: override daca ARCH != x86_64 (implicit in LUPBUILD)
+# Pachetele native: override daca ARCH != x86_64 (implicit in CPMBUILD)
 # Daca ARCH=any (edge-case), le sarim peste — n-are sens fara cross.
 if [[ "$ARCH" != "any" ]]; then
     construieste adevarat "$ARCH"

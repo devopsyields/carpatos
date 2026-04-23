@@ -1,10 +1,10 @@
 /* repo.c — index de repo simplu
  *
  * Format repo.index (o linie / pachet):
- *   nume|versiune|arh|descriere|dep1,dep2|fisier.lup
+ *   nume|versiune|arh|descriere|dep1,dep2|fisier.cpm
  */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <dirent.h>
 #include <stdio.h>
@@ -82,19 +82,19 @@ int repo_gaseste(const char *nume, Manifest *m_out) {
 
 int repo_actualizeaza_index(void) {
     if (asigura_dir(DIR_DB) < 0) {
-        lup_err("nu pot crea %s", DIR_DB);
+        cpm_err("nu pot crea %s", DIR_DB);
         return -1;
     }
     DIR *d = opendir(DIR_REPO);
     if (!d) {
-        lup_err("nu pot deschide %s", DIR_REPO);
+        cpm_err("nu pot deschide %s", DIR_REPO);
         return -1;
     }
 
     FILE *idx = fopen(FILE_REPO_INDEX, "w");
     if (!idx) {
         closedir(d);
-        lup_err("nu pot scrie %s", FILE_REPO_INDEX);
+        cpm_err("nu pot scrie %s", FILE_REPO_INDEX);
         return -1;
     }
 
@@ -103,7 +103,7 @@ int repo_actualizeaza_index(void) {
     while ((ent = readdir(d))) {
         const char *nume = ent->d_name;
         size_t ln = strlen(nume);
-        if (ln < 5 || strcmp(nume + ln - 4, ".lup") != 0) continue;
+        if (ln < 5 || strcmp(nume + ln - 4, ".cpm") != 0) continue;
 
         char cale[MAX_CALE + 64];
         if ((size_t)snprintf(cale, sizeof(cale), "%s/%s",
@@ -112,8 +112,8 @@ int repo_actualizeaza_index(void) {
         Manifest m;
         void *payload;
         size_t plen;
-        if (lup_incarca(cale, &m, &payload, &plen) < 0) {
-            lup_err("ignorat (invalid): %s", nume);
+        if (cpm_incarca(cale, &m, &payload, &plen) < 0) {
+            cpm_err("ignorat (invalid): %s", nume);
             continue;
         }
         free(payload);
@@ -124,6 +124,6 @@ int repo_actualizeaza_index(void) {
     }
     closedir(d);
     fclose(idx);
-    lup_info("Index repo actualizat: %d pachete in %s", nr, DIR_REPO);
+    cpm_info("Index repo actualizat: %d pachete in %s", nr, DIR_REPO);
     return 0;
 }

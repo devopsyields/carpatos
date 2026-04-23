@@ -1,6 +1,6 @@
-/* db.c — CRUD in /var/lup/db/installed/<nume>/{manifest,files} */
+/* db.c — CRUD in /var/cpm/db/installed/<nume>/{manifest,files} */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -24,7 +24,7 @@ int db_este_instalat(const char *nume) {
 
 int db_salveaza_pachet(const Manifest *m, const char *jurnal_fisiere) {
     if (asigura_dir(DIR_INSTALLED) < 0) {
-        lup_err("nu pot crea %s: %s", DIR_INSTALLED, strerror(errno));
+        cpm_err("nu pot crea %s: %s", DIR_INSTALLED, strerror(errno));
         return -1;
     }
     char cale[MAX_CALE + 64];

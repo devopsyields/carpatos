@@ -10,7 +10,7 @@ Salut! Continuăm un proiect început într-o sesiune de chat. Context complet m
 
 ## Proiectul: CarpatOS
 
-Distribuție Linux minimalistă stil Alpine, cu package manager propriu numit `lup`, și userland scris de la zero în C. Filozofie: ISO-ul bootează într-un shell minim propriu (`msh`) + `lup` preinstalat; restul (bash, coreutils, grep etc.) se instalează prin `lup install` după boot.
+Distribuție Linux minimalistă stil Alpine, cu package manager propriu numit `cpm`, și userland scris de la zero în C. Filozofie: ISO-ul bootează într-un shell minim propriu (`msh`) + `cpm` preinstalat; restul (bash, coreutils, grep etc.) se instalează prin `cpm install` după boot.
 
 **Arhitecturi target: multi-arch x86_64 + aarch64.** Utilizatorul rulează pe Mac Apple Silicon + Parallels Desktop, deci **aarch64 e prioritatea principală** de testare.
 
@@ -38,14 +38,14 @@ Codul existent a fost verificat sintactic și `msh` a fost testat funcțional (e
 - **Compresie pachete**: NU pentru MVP — tar USTAR necomprimat. Se va adăuga zstd/gzip ulterior.
 - **Output utilizator**: română peste tot. Kernel messages rămân în engleză (nu patchuim kernelul).
 - **Identificatori în cod**: engleză (POSIX compat). Stringuri + comentarii + docs: română.
-- **Package manager**: `lup`, specificat detaliat mai jos.
+- **Package manager**: `cpm`, specificat detaliat mai jos.
 
-## Specificație `lup` (complet proiectat, cod scris și testat funcțional în sesiunea anterioară — trebuie recreat)
+## Specificație `cpm` (complet proiectat, cod scris și testat funcțional în sesiunea anterioară — trebuie recreat)
 
-### Format fișier `.lup`
+### Format fișier `.cpm`
 ```
 [antet 16 octeți, little-endian]
-  uint32_t magic;            // 0x0050554c = "LUP\0"
+  uint32_t magic;            // 0x004d5043 = "CPM\0"
   uint32_t versiune_format;  // 1
   uint32_t manifest_len;
   uint32_t payload_len;
@@ -65,43 +65,43 @@ Comentarii: linii care încep cu `#`. Spații în jurul `=` acceptate.
 
 ### Layout filesystem
 ```
-/var/lup/
+/var/cpm/
 ├── db/
 │   ├── installed/
 │   │   └── <nume>/
 │   │       ├── manifest     (textul manifestului original)
 │   │       └── files        (căi absolute instalate, una pe linie)
-│   └── repo.index           (text: nume|ver|arh|desc|dep1,dep2|fisier.lup)
+│   └── repo.index           (text: nume|ver|arh|desc|dep1,dep2|fisier.cpm)
 ├── cache/
 └── repos/
-    └── carpatos-core/       (fișiere .lup)
+    └── carpatos-core/       (fișiere .cpm)
 ```
 
 ### Comenzi de implementat
-- `lup install <pkg>...` — rezolvă deps recursiv, instalează în ordine topologică, DFS cu detectare cicluri
-- `lup remove <pkg>... [--force|-f]` — verifică reverse-deps, refuză fără `--force` dacă alții depind
-- `lup local <fisier.lup>...` — instalează direct dintr-un fișier, fără deps automate
-- `lup list` — pachete instalate (din db/installed/)
-- `lup list -a` — pachete disponibile (din repo.index)
-- `lup search <termen>` — caută case-insensitive în nume+descriere (folosește strcasestr)
-- `lup info <pkg>` — detalii, caută întâi în instalate, apoi în repo
-- `lup update` — reconstruiește repo.index scanând `DIR_REPO/*.lup`
-- `lup build <dir> [-o <out>]` — construiește `.lup` din director sursă cu `LUPBUILD` + `build.sh`
-- `lup version`, `lup help`
+- `cpm install <pkg>...` — rezolvă deps recursiv, instalează în ordine topologică, DFS cu detectare cicluri
+- `cpm remove <pkg>... [--force|-f]` — verifică reverse-deps, refuză fără `--force` dacă alții depind
+- `cpm local <fisier.cpm>...` — instalează direct dintr-un fișier, fără deps automate
+- `cpm list` — pachete instalate (din db/installed/)
+- `cpm list -a` — pachete disponibile (din repo.index)
+- `cpm search <termen>` — caută case-insensitive în nume+descriere (folosește strcasestr)
+- `cpm info <pkg>` — detalii, caută întâi în instalate, apoi în repo
+- `cpm update` — reconstruiește repo.index scanând `DIR_REPO/*.cpm`
+- `cpm build <dir> [-o <out>]` — construiește `.cpm` din director sursă cu `CPMBUILD` + `build.sh`
+- `cpm version`, `lup help`
 
-### Structura fișierelor sursă `lup` (13 fișiere)
+### Structura fișierelor sursă `cpm` (13 fișiere)
 Organizate în `initramfs/src/lup/`:
 - `lup.h` — declarații
-- `util.c` — logging (lup_info/err/debug, LUP_DEBUG env var), asigura_dir (mkdir -p), sterge_recursiv, citeste_fisier (malloc), scrie_fisier, copiaza_fisier
+- `util.c` — logging (lup_info/err/debug, CPM_DEBUG env var), asigura_dir (mkdir -p), sterge_recursiv, citeste_fisier (malloc), scrie_fisier, copiaza_fisier
 - `manifest.c` — parse key=value, serializare, afișare
 - `tar.c` — USTAR read (tar_extrage, suport fișiere + dirs + symlinks) + write (tar_construieste, walk director). Ignoră tipuri speciale. MAX nume 100 chars (fără GNU LongLink pentru MVP).
 - `pkg.c` — lup_incarca / lup_salveaza (antet + manifest + payload)
-- `db.c` — CRUD în /var/lup/db/installed/
-- `repo.c` — parse index, repo_gaseste, repo_listeaza, repo_actualizeaza_index (scanare .lup)
+- `db.c` — CRUD în /var/cpm/db/installed/
+- `repo.c` — parse index, repo_gaseste, repo_listeaza, repo_actualizeaza_index (scanare .cpm)
 - `cmd_install.c` — rezolvare cu DFS + lista "ordine" + "in_curs" pentru detectare cicluri
 - `cmd_remove.c` — reverse_deps check
 - `cmd_query.c` — list/search/info/update
-- `cmd_build.c` — parse LUPBUILD, fork+exec build.sh cu DESTDIR=/tmp/lup-build-PID-nume, tar_construieste, scrie .lup
+- `cmd_build.c` — parse CPMBUILD, fork+exec build.sh cu DESTDIR=/tmp/lup-build-PID-nume, tar_construieste, scrie .cpm
 - `main.c` — dispatch simplu cu strcmp
 - `Makefile` — cu `ARCH=x86_64|aarch64`, cross-compile static cu `*-linux-musl-gcc`, flags: `-std=c11 -Wall -Wextra -Werror -O2 -fno-stack-protector -fno-pie`, ldflags: `-static -no-pie -s`
 
@@ -144,20 +144,20 @@ Moduri: `direct-x86`, `iso-x86`, `uefi-x86`, `direct-arm`, `iso-arm`, `uefi-arm`
 Aceeași configurație text merge pentru ambele arhitecturi (Limine alege automat artefactele corespunzătoare).
 
 ## Pachete demo (de creat în `packages/`)
-4 pachete minimale pentru validare end-to-end `lup`:
+4 pachete minimale pentru validare end-to-end `cpm`:
 - `hello` — shell script care afișează "Salut din CarpatOS!"
 - `adevarat` — exit 0 (echivalent `true`)
 - `fals` — exit 1 (echivalent `false`)
 - `ecou` — minimal `echo` în C compilat static cu musl
 
-Fiecare are `LUPBUILD` + `build.sh`. Există deja un script conceptual `scripts/build-packages.sh` care iterează prin ele și le pune în `initramfs/rootfs/var/lup/repos/carpatos-core/`.
+Fiecare are `CPMBUILD` + `build.sh`. Există deja un script conceptual `scripts/build-packages.sh` care iterează prin ele și le pune în `initramfs/rootfs/var/cpm/repos/carpatos-core/`.
 
 ## Sarcina ta (în ordine, fiecare completă înainte de următoarea)
 
-**Faza A — Recreare `lup` (validat funcțional în sesiunea anterioară):**
+**Faza A — Recreare `cpm` (validat funcțional în sesiunea anterioară):**
 1. Creează toate cele 13 fișiere în `initramfs/src/lup/` conform specificației de mai sus
 2. Compilează cu gcc de sistem (sanity check): `gcc -Wall -Wextra -Werror -O2 -o lup_test *.c`
-3. Fă un smoke test: `lup version`, `lup help`, `lup build` pe un director minimal, `lup list` cu /var/lup gol
+3. Fă un smoke test: `cpm version`, `lup help`, `cpm build` pe un director minimal, `cpm list` cu /var/cpm gol
 
 **Faza B — Multi-arch:**
 4. Refactorizează `toolchain/Dockerfile`, `kernel/Makefile`, `initramfs/Makefile`, `scripts/build-iso.sh`, `scripts/run-qemu.sh`, top-level `Makefile` pentru parametrizare `ARCH`
@@ -166,12 +166,12 @@ Fiecare are `LUPBUILD` + `build.sh`. Există deja un script conceptual `scripts/
 **Faza C — Pachete demo:**
 6. Creează cele 4 pachete în `packages/`
 7. Creează `scripts/build-packages.sh` care le construiește pentru ambele arhitecturi
-8. Integrează: `initramfs/Makefile` trebuie să copieze pachetele în `rootfs/var/lup/repos/carpatos-core/` înainte de cpio
+8. Integrează: `initramfs/Makefile` trebuie să copieze pachetele în `rootfs/var/cpm/repos/carpatos-core/` înainte de cpio
 
 **Faza D — Boot efectiv pe aarch64 în QEMU:**
 9. `make ARCH=aarch64` — trebuie să producă ISO
 10. `make ARCH=aarch64 run-uefi` — trebuie să booteze în QEMU și să ajungă la promptul `carpatos#`
-11. Rulează `lup list -a` (trebuie să arate cele 4 pachete), `lup install hello`, `hello` (trebuie să printeze "Salut din CarpatOS!")
+11. Rulează `cpm list -a` (trebuie să arate cele 4 pachete), `cpm install hello`, `hello` (trebuie să printeze "Salut din CarpatOS!")
 12. Fix orice apare pe parcurs (drivere lipsă în kernel config, permisiuni, etc.)
 
 **Faza E — Parallels:**
@@ -181,13 +181,13 @@ Fiecare are `LUPBUILD` + `build.sh`. Există deja un script conceptual `scripts/
 **Faza F — Documentație finală:**
 15. Update `README.md` cu quick start pentru ambele arhitecturi și referință către PARALLELS.md
 16. Update `docs/CONSTRUIRE.md` cu secțiunea multi-arch
-17. Adaugă `docs/LUPBUILD.md` — specificația formatului pentru autori de pachete
+17. Adaugă `docs/CPMBUILD.md` — specificația formatului pentru autori de pachete
 
 ## Convenții cod
 
 - Stringuri în cod: `"Instalez %s-%s", nume, ver` (română, fără diacritice în mesajele de boot pentru siguranță — consolefont n-o să fie încărcat; după MVP trecem pe UTF-8 complet)
 - Identificatori: engleză (`install`, `remove`, `parse_manifest`)
-- Nume funcții Claude-side (ale lui `lup`, vizibile utilizatorului final prin help): un mix natural, de ex. `manifest_parseaza`, `cmd_install`, `repo_gaseste` — acceptabil, așa e scris deja
+- Nume funcții Claude-side (ale lui `cpm`, vizibile utilizatorului final prin help): un mix natural, de ex. `manifest_parseaza`, `cmd_install`, `repo_gaseste` — acceptabil, așa e scris deja
 - Erori pe stderr, output normal pe stdout
 - `-Werror` activ; orice warning trebuie reparat, nu suprimat
 
@@ -195,9 +195,9 @@ Fiecare are `LUPBUILD` + `build.sh`. Există deja un script conceptual `scripts/
 
 - Nu adăuga dependențe C externe (nu pulling zlib, nu json-c, etc.) — vrem binarele static-linked curate
 - Nu rescrie `init.c` sau `msh.c` decât dacă găsești un bug real
-- Nu schimba formatul `.lup` fără să discutăm; e stabilit
+- Nu schimba formatul `.cpm` fără să discutăm; e stabilit
 - Nu folosi GNU extensions la tar (LongLink) — menținem nume ≤ 100 chars pentru MVP
-- Nu adăuga compresie la `.lup` în MVP — tar necomprimat e suficient
+- Nu adăuga compresie la `.cpm` în MVP — tar necomprimat e suficient
 
 ## Întrebări de clarificare
 

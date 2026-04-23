@@ -29,8 +29,10 @@ ifeq ($(ARCH),x86_64)
 else ifeq ($(ARCH),aarch64)
   K_ARCH       := arm64
   CROSS        := aarch64-linux-musl-
-  K_TARGET     := Image.gz
-  K_ARTIFACT   := arch/arm64/boot/Image.gz
+  # Image (necomprimat) — format cu magic "ARMd" recunoscut de Limine
+  # protocol: linux pe aarch64. Image.gz nu are magic-ul, deci panic la boot.
+  K_TARGET     := Image
+  K_ARTIFACT   := arch/arm64/boot/Image
   CONFIG_ARCH_FRAGS := \
     --enable  CONFIG_SERIAL_AMBA_PL011 \
     --enable  CONFIG_SERIAL_AMBA_PL011_CONSOLE \

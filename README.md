@@ -1,6 +1,6 @@
 # CarpatOS
 
-> Distributie Linux minimalistă stil Alpine, cu package manager propriu (`lup`)
+> Distributie Linux minimalistă stil Alpine, cu package manager propriu (`cpm`)
 > si userland scris de la zero in C. Toata interactiunea cu utilizatorul este
 > in limba romana.
 
@@ -8,7 +8,7 @@
 
 **Faza 1 + package manager.** Sistem care porneste in QEMU sau
 Parallels (BIOS sau UEFI), monteaza pseudo-filesystem-urile, si prezinta
-un shell minim (`msh`). `lup`, package managerul, functioneaza si are
+un shell minim (`msh`). `cpm`, package managerul, functioneaza si are
 patru pachete demo. Suport multi-arch pentru **x86_64** si **aarch64**.
 
 ## Componente
@@ -86,8 +86,8 @@ Pentru a rula ISO-ul aarch64 in Parallels pe Mac, vezi
 msh — shell minim CarpatOS
 Tasteaza 'help' pentru lista de comenzi.
 
-carpatos# lup install hello
-Instalez hello-1.0 (din /var/lup/repos/carpatos-core/hello-1.0-any.lup)
+carpatos# cpm install hello
+Instalez hello-1.0 (din /var/cpm/repos/carpatos-core/hello-1.0-any.cpm)
 carpatos# hello
 Salut din CarpatOS!
 carpatos#
@@ -105,10 +105,10 @@ carpatos/
 │   ├── src/
 │   │   ├── init/         # /init (PID 1)
 │   │   ├── msh/          # shell minim + mod script
-│   │   ├── lup/          # package manager `lup`
+│   │   ├── lup/          # package manager `cpm`
 │   │   └── common/       # headere comune (mesaje)
 │   └── rootfs/           # schelet filesystem (etc, dev, proc, etc)
-├── packages/             # pachete demo (LUPBUILD + build.sh)
+├── packages/             # pachete demo (CPMBUILD + build.sh)
 │   ├── hello/            # script shell
 │   ├── adevarat/         # binar C: exit 0
 │   ├── fals/             # binar C: exit 1
@@ -121,7 +121,7 @@ carpatos/
     ├── INSTALARE.md
     ├── CONSTRUIRE.md     # multi-arch build + run
     ├── ARHITECTURA.md
-    ├── LUPBUILD.md       # formatul .lup + scrierea pachetelor
+    ├── CPMBUILD.md       # formatul .cpm + scrierea pachetelor
     └── PARALLELS.md      # boot in Parallels Desktop (Apple Silicon)
 ```
 
@@ -129,11 +129,11 @@ carpatos/
 
 - [x] **Faza 0** — Toolchain reproducibil (Docker + musl-cross + Limine)
 - [x] **Faza 1** — Boot MVP: kernel + init + msh minimal
-- [x] **Faza A–F** — Package manager `lup` + pachete demo + multi-arch
+- [x] **Faza A–F** — Package manager `cpm` + pachete demo + multi-arch
 - [ ] **Faza 2** — msh complet: pipes, redirecturi, variabile (partial — mod script exista)
-- [ ] **Faza 3** — Port de coreutils minimal (bash, grep, ls) ca pachete `lup`
+- [ ] **Faza 3** — Port de coreutils minimal (bash, grep, ls) ca pachete `cpm`
 - [ ] **Faza 4** — Instalator TUI pentru hardware real
-- [ ] **Faza 5** — Stack retea, `lup` cu repo-uri HTTP
+- [ ] **Faza 5** — Stack retea, `cpm` cu repo-uri HTTP
 - [ ] **Faza 6+** — Framebuffer grafic, compositor, desktop stil macOS
 
 ## Licenta

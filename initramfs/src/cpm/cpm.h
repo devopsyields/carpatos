@@ -1,23 +1,23 @@
-/* lup.h — declaratii comune pentru package manager-ul CarpatOS
+/* cpm.h — declaratii comune pentru package manager-ul CarpatOS
  *
- * Format pachet .lup:
+ * Format pachet .cpm:
  *   [antet 16 octeti, little-endian]
- *     uint32_t magic;            // 0x0050554c = "LUP\0"
+ *     uint32_t magic;            // 0x004d5043 = "CPM\0"
  *     uint32_t versiune_format;  // 1
  *     uint32_t manifest_len;
  *     uint32_t payload_len;
  *   [manifest: text key=value]
  *   [payload: arhiva tar USTAR necomprimata]
  */
-#ifndef LUP_H
-#define LUP_H
+#ifndef CPM_H
+#define CPM_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#define LUP_VERSIUNE        "0.1.0"
-#define LUP_MAGIC           0x0050554cu  /* "LUP\0" */
-#define LUP_FORMAT_VER      1u
+#define CPM_VERSIUNE        "0.1.0"
+#define CPM_MAGIC           0x004d5043u  /* "CPM\0" */
+#define CPM_FORMAT_VER      1u
 
 #define MAX_CALE            512
 #define MAX_NUME            64
@@ -25,17 +25,22 @@
 #define MAX_ARH             16
 #define MAX_DESCRIERE       256
 
-#define DIR_VAR             "/var/lup"
-#define DIR_DB              "/var/lup/db"
-#define DIR_INSTALLED       "/var/lup/db/installed"
-#define DIR_CACHE           "/var/lup/cache"
-#define DIR_REPO            "/var/lup/repos/carpatos-core"
-#define FILE_REPO_INDEX     "/var/lup/db/repo.index"
+/* Path-urile sunt construite la startup din CPM_ROOT (env, optional) +
+ * subcai fixe. Permite rularea cpm_host la build cu CPM_ROOT=rootfs/.
+ * Cand CPM_ROOT e nesetat, path-urile incep cu /var/cpm. */
+extern char DIR_VAR[MAX_CALE];
+extern char DIR_DB[MAX_CALE];
+extern char DIR_INSTALLED[MAX_CALE];
+extern char DIR_CACHE[MAX_CALE];
+extern char DIR_REPO[MAX_CALE];
+extern char FILE_REPO_INDEX[MAX_CALE];
+
+void cpm_init_paths(void);
 
 /* ===== logging ===== */
-void lup_info(const char *fmt, ...);
-void lup_err(const char *fmt, ...);
-void lup_debug(const char *fmt, ...);
+void cpm_info(const char *fmt, ...);
+void cpm_err(const char *fmt, ...);
+void cpm_debug(const char *fmt, ...);
 
 /* ===== util ===== */
 int  asigura_dir(const char *cale);            /* mkdir -p */
@@ -64,9 +69,9 @@ int  tar_extrage(const void *buf, size_t len, const char *dest_dir,
 int  tar_construieste(const char *src_dir, void **buf_out, size_t *len_out);
 
 /* ===== pkg ===== */
-int  lup_incarca(const char *cale, Manifest *m,
+int  cpm_incarca(const char *cale, Manifest *m,
                  void **payload_out, size_t *payload_len_out);
-int  lup_salveaza(const char *cale, const Manifest *m,
+int  cpm_salveaza(const char *cale, const Manifest *m,
                   const void *payload, size_t payload_len);
 
 /* ===== db ===== */
@@ -93,4 +98,4 @@ int  cmd_info(int argc, char **argv);
 int  cmd_update(int argc, char **argv);
 int  cmd_build(int argc, char **argv);
 
-#endif /* LUP_H */
+#endif /* CPM_H */

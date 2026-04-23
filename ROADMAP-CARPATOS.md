@@ -4,18 +4,18 @@ Document de referință pentru tine (utilizator). Îți arată ce urmează, ce e
 
 ---
 
-## Fazele A-F (MVP complet bootabil cu `lup`)
+## Fazele A-F (MVP complet bootabil cu `cpm`)
 
-Acestea sunt în promptul de onboarding. Target: **CarpatOS bootează în Parallels pe Apple Silicon și rulează `lup install hello` cu succes.** Durată estimată la Claude Code: 1-2 sesiuni de ~1h fiecare.
+Acestea sunt în promptul de onboarding. Target: **CarpatOS bootează în Parallels pe Apple Silicon și rulează `cpm install hello` cu succes.** Durată estimată la Claude Code: 1-2 sesiuni de ~1h fiecare.
 
-### Faza A — Recreare `lup` (~30 min)
-**Acceptance:** `gcc -Wall -Wextra -Werror -O2 -o lup *.c` trece fără warnings. `./lup version` răspunde. `./lup build <dir>` produce un `.lup` valid verificabil cu `tar -tvf` pe payload.
+### Faza A — Recreare `cpm` (~30 min)
+**Acceptance:** `gcc -Wall -Wextra -Werror -O2 -o lup *.c` trece fără warnings. `./cpm version` răspunde. `./cpm build <dir>` produce un `.cpm` valid verificabil cu `tar -tvf` pe payload.
 
 ### Faza B — Multi-arch toolchain (~20 min)
 **Acceptance:** `docker build -t carpatos-toolchain toolchain/` construiește imaginea. În container, `aarch64-linux-musl-gcc --version` și `x86_64-linux-musl-gcc --version` răspund ambele. `qemu-system-aarch64 --version` merge.
 
 ### Faza C — Pachete demo (~15 min)
-**Acceptance:** `./scripts/build-packages.sh aarch64` produce 4 fișiere `.lup` în directorul repo. `lup update` urmat de `lup list -a` le afișează pe toate.
+**Acceptance:** `./scripts/build-packages.sh aarch64` produce 4 fișiere `.cpm` în directorul repo. `cpm update` urmat de `cpm list -a` le afișează pe toate.
 
 ### Faza D — Boot aarch64 în QEMU (~30-60 min, aici apar debuguri reale)
 **Acceptance:**
@@ -24,7 +24,7 @@ $ make ARCH=aarch64 run-uefi
 ...
 carpatos#
 ```
-Plus `lup install hello && hello` să printeze "Salut din CarpatOS!".
+Plus `cpm install hello && hello` să printeze "Salut din CarpatOS!".
 
 **Probleme probabile:**
 - Kernel nu bootează — lipsesc CONFIG_PCI_HOST_GENERIC sau CONFIG_VIRTIO_MMIO
@@ -35,7 +35,7 @@ Plus `lup install hello && hello` să printeze "Salut din CarpatOS!".
 **Acceptance:** VM creat în Parallels pornește de pe ISO, bootează în `carpatos#`.
 
 ### Faza F — Documentație finală (~20 min)
-**Acceptance:** `README.md` are quick-start x86 + aarch64 + Parallels. `docs/LUPBUILD.md` are specificația completă pentru autori de pachete.
+**Acceptance:** `README.md` are quick-start x86 + aarch64 + Parallels. `docs/CPMBUILD.md` are specificația completă pentru autori de pachete.
 
 ---
 
@@ -44,7 +44,7 @@ Plus `lup install hello && hello` să printeze "Salut din CarpatOS!".
 Între Faza F și M1 e un salt mic dar important: **pachete reale instalabile**. Alpine-alike fără ce scrie Alpine în description e doar demo.
 
 ### M1.1 — Build system pentru pachete upstream
-Adaugă suport în `lup build` pentru pachete care au cod upstream (fetch tarball, verifică hash, patch, configure, make). Model: `APKBUILD`-urile din Alpine. Un fișier `LUPBUILD` extins cu funcții `pregatire()`, `construire()`, `impachetare()` sursate ca shell.
+Adaugă suport în `cpm build` pentru pachete care au cod upstream (fetch tarball, verifică hash, patch, configure, make). Model: `APKBUILD`-urile din Alpine. Un fișier `CPMBUILD` extins cu funcții `pregatire()`, `construire()`, `impachetare()` sursate ca shell.
 
 ### M1.2 — Primele pachete reale
 În ordine (dependențele merg de sus în jos):
@@ -56,7 +56,7 @@ Adaugă suport în `lup build` pentru pachete care au cod upstream (fetch tarbal
 6. **less, vi** (busybox `vi` inițial, apoi `vim` sau `neovim` ca pachet separat)
 7. **file, which, find**
 
-**Acceptance M1:** După `lup install bash coreutils grep sed tar`, poți rula scripturi shell complexe. Sistem devine "Alpine-like utilizabil".
+**Acceptance M1:** După `cpm install bash coreutils grep sed tar`, poți rula scripturi shell complexe. Sistem devine "Alpine-like utilizabil".
 
 ---
 
@@ -88,21 +88,21 @@ Kernel config: deja activat. Userspace trebuie un DHCP client. Opțiuni:
 - **Busybox udhcpc** — simplu, proven
 - **Propriu** — ~500 LoC C pentru DHCP + resolv.conf + ip addr/route (learning project bun)
 
-### M3.2 — HTTP client în `lup`
-Implementare proprie HTTP/1.1 GET (~300 LoC), fără TLS inițial. Plain HTTP pentru repo-uri interne. Adăugare `lup_fetch(url, dest)` + modificare `lup update` să citească `/etc/lup/repos.conf`.
+### M3.2 — HTTP client în `cpm`
+Implementare proprie HTTP/1.1 GET (~300 LoC), fără TLS inițial. Plain HTTP pentru repo-uri interne. Adăugare `lup_fetch(url, dest)` + modificare `cpm update` să citească `/etc/lup/repos.conf`.
 
 ### M3.3 — Repo remote
 Host un repo static pe un GitHub Pages sau S3:
 ```
 https://carpatos.dev/repo/carpatos-core/aarch64/
   ├── index.txt
-  └── *.lup
+  └── *.cpm
 ```
 
 ### M3.4 — TLS
 Adăugare `mbedtls` static, sau OpenSSL static. Opțiunea ușoară: mbedtls.
 
-**Acceptance M3:** `lup update && lup install bash` funcționează dintr-un sistem nou instalat, fără ISO atașat.
+**Acceptance M3:** `cpm update && cpm install bash` funcționează dintr-un sistem nou instalat, fără ISO atașat.
 
 ---
 
@@ -154,7 +154,7 @@ Elemente:
 - WiFi stack (wpa_supplicant + drivere)
 - Power management (suspend, hibernate)
 - Localizare UTF-8 completă cu diacritice românești peste tot
-- Store de aplicații cu GUI peste `lup`
+- Store de aplicații cu GUI peste `cpm`
 - Multi-user (useradd, login screen grafic)
 - Containere / namespaces (deja în kernel, trebuie userland)
 
@@ -188,7 +188,7 @@ Elemente:
 
 Total până la "distribuție Linux minimalistă cu CLI-ul complet, fără desktop": **~3 luni** part-time, **~1 lună** full-time. **Asta e proiect serios, nu weekend hack.**
 
-Dar MVP (Faza F) — sistem care bootează în Parallels cu prompt, `lup` funcțional, 4 pachete demo instalabile — e chestiune de **câteva sesiuni de Claude Code de 1h fiecare**. Ăla trebuie să fie obiectivul tău imediat.
+Dar MVP (Faza F) — sistem care bootează în Parallels cu prompt, `cpm` funcțional, 4 pachete demo instalabile — e chestiune de **câteva sesiuni de Claude Code de 1h fiecare**. Ăla trebuie să fie obiectivul tău imediat.
 
 ---
 

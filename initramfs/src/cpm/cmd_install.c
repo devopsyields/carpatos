@@ -1,6 +1,6 @@
-/* cmd_install.c — rezolvare deps + instalare; cmd_local pentru fisier .lup */
+/* cmd_install.c — rezolvare deps + instalare; cmd_local pentru fisier .cpm */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,14 +56,14 @@ static int rezolva(const char *nume, Lista *ordine, Lista *in_curs) {
     if (db_este_instalat(nume)) return 0;
     if (lista_contine(ordine, nume)) return 0;
     if (lista_contine(in_curs, nume)) {
-        lup_err("ciclu de dependente la pachetul %s", nume);
+        cpm_err("ciclu de dependente la pachetul %s", nume);
         return -1;
     }
     if (lista_adauga(in_curs, nume) < 0) return -1;
 
     Manifest m;
     if (repo_gaseste(nume, &m) < 0) {
-        lup_err("pachetul '%s' nu este in repo", nume);
+        cpm_err("pachetul '%s' nu este in repo", nume);
         return -1;
     }
 
@@ -97,20 +97,20 @@ static void jurnal_scrie(const char *cale, void *ctx) {
     fprintf(j->jurnal, "%s\n", cale);
 }
 
-/* Extrage payload-ul dintr-un .lup intr-un dest_dir si scrie jurnalul fisierelor */
-static int extrage_si_inregistreaza(const Manifest *m, const char *cale_lup,
+/* Extrage payload-ul dintr-un .cpm intr-un dest_dir si scrie jurnalul fisierelor */
+static int extrage_si_inregistreaza(const Manifest *m, const char *cale_cpm,
                                      const char *dest_dir) {
     Manifest m2;
     void *payload;
     size_t plen;
-    if (lup_incarca(cale_lup, &m2, &payload, &plen) < 0) return -1;
+    if (cpm_incarca(cale_cpm, &m2, &payload, &plen) < 0) return -1;
 
     char *jurnal_buf = NULL;
     size_t jurnal_len = 0;
     FILE *jurnal = open_memstream(&jurnal_buf, &jurnal_len);
     if (!jurnal) {
         free(payload);
-        lup_err("open_memstream esuat");
+        cpm_err("open_memstream esuat");
         return -1;
     }
 
@@ -121,7 +121,7 @@ static int extrage_si_inregistreaza(const Manifest *m, const char *cale_lup,
 
     if (rc < 0) {
         free(jurnal_buf);
-        lup_err("extractie esuata pentru %s", m->nume);
+        cpm_err("extractie esuata pentru %s", m->nume);
         return -1;
     }
 
@@ -134,16 +134,16 @@ static int extrage_si_inregistreaza(const Manifest *m, const char *cale_lup,
 }
 
 static int instaleaza_din_repo(const Manifest *m) {
-    char cale_lup[MAX_CALE + 64];
-    if ((size_t)snprintf(cale_lup, sizeof(cale_lup), "%s/%s",
-                          DIR_REPO, m->fisier) >= sizeof(cale_lup)) return -1;
-    lup_info("Instalez %s-%s", m->nume, m->versiune);
-    return extrage_si_inregistreaza(m, cale_lup, "/");
+    char cale_cpm[MAX_CALE + 64];
+    if ((size_t)snprintf(cale_cpm, sizeof(cale_cpm), "%s/%s",
+                          DIR_REPO, m->fisier) >= sizeof(cale_cpm)) return -1;
+    cpm_info("Instalez %s-%s", m->nume, m->versiune);
+    return extrage_si_inregistreaza(m, cale_cpm, "/");
 }
 
 int cmd_install(int argc, char **argv) {
     if (argc < 1) {
-        lup_err("folosire: lup install <pachet>...");
+        cpm_err("folosire: cpm install <pachet>...");
         return 1;
     }
     Lista ordine = {0}, in_curs = {0};
@@ -164,16 +164,16 @@ sfarsit:
 
 int cmd_local(int argc, char **argv) {
     if (argc < 1) {
-        lup_err("folosire: lup local <fisier.lup>...");
+        cpm_err("folosire: cpm local <fisier.cpm>...");
         return 1;
     }
     for (int i = 0; i < argc; i++) {
         Manifest m;
         void *payload;
         size_t plen;
-        if (lup_incarca(argv[i], &m, &payload, &plen) < 0) return 1;
+        if (cpm_incarca(argv[i], &m, &payload, &plen) < 0) return 1;
         free(payload);  /* eliberam — vom reciti in extrage_si_inregistreaza */
-        lup_info("Instalez %s-%s (din %s)", m.nume, m.versiune, argv[i]);
+        cpm_info("Instalez %s-%s (din %s)", m.nume, m.versiune, argv[i]);
         if (extrage_si_inregistreaza(&m, argv[i], "/") < 0) return 1;
     }
     return 0;

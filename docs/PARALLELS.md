@@ -59,9 +59,9 @@ In shell-ul `msh`:
 ```
 carpatos# versiune
 CarpatOS 0.1.0
-carpatos# lup list -a
+carpatos# cpm list -a
 ...
-carpatos# lup install hello
+carpatos# cpm install hello
 Instalez hello-1.0 (din ...)
 carpatos# hello
 Salut din CarpatOS!

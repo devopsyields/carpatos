@@ -1,6 +1,6 @@
-/* util.c — logging + operatii de fisier pentru lup */
+/* util.c — logging + operatii de fisier pentru cpm */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -13,12 +13,36 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+char DIR_VAR[MAX_CALE];
+char DIR_DB[MAX_CALE];
+char DIR_INSTALLED[MAX_CALE];
+char DIR_CACHE[MAX_CALE];
+char DIR_REPO[MAX_CALE];
+char FILE_REPO_INDEX[MAX_CALE];
+
+void cpm_init_paths(void) {
+    const char *root = getenv("CPM_ROOT");
+    if (!root) root = "";
+    /* Strip trailing slash ca sa evitam // in paths */
+    size_t rl = strlen(root);
+    char r[MAX_CALE];
+    if (rl >= sizeof(r)) rl = sizeof(r) - 1;
+    memcpy(r, root, rl); r[rl] = '\0';
+    while (rl > 0 && r[rl - 1] == '/') r[--rl] = '\0';
+    snprintf(DIR_VAR,         sizeof(DIR_VAR),         "%s/var/cpm", r);
+    snprintf(DIR_DB,          sizeof(DIR_DB),          "%s/var/cpm/db", r);
+    snprintf(DIR_INSTALLED,   sizeof(DIR_INSTALLED),   "%s/var/cpm/db/installed", r);
+    snprintf(DIR_CACHE,       sizeof(DIR_CACHE),       "%s/var/cpm/cache", r);
+    snprintf(DIR_REPO,        sizeof(DIR_REPO),        "%s/var/cpm/repos/carpatos-core", r);
+    snprintf(FILE_REPO_INDEX, sizeof(FILE_REPO_INDEX), "%s/var/cpm/db/repo.index", r);
+}
+
 static int debug_activ(void) {
-    const char *s = getenv("LUP_DEBUG");
+    const char *s = getenv("CPM_DEBUG");
     return s && *s && strcmp(s, "0") != 0;
 }
 
-void lup_info(const char *fmt, ...) {
+void cpm_info(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stdout, fmt, ap);
@@ -26,8 +50,8 @@ void lup_info(const char *fmt, ...) {
     fputc('\n', stdout);
 }
 
-void lup_err(const char *fmt, ...) {
-    fputs("lup: eroare: ", stderr);
+void cpm_err(const char *fmt, ...) {
+    fputs("cpm: eroare: ", stderr);
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
@@ -35,9 +59,9 @@ void lup_err(const char *fmt, ...) {
     fputc('\n', stderr);
 }
 
-void lup_debug(const char *fmt, ...) {
+void cpm_debug(const char *fmt, ...) {
     if (!debug_activ()) return;
-    fputs("[lup-debug] ", stderr);
+    fputs("[cpm-debug] ", stderr);
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);

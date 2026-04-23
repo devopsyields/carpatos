@@ -12,10 +12,10 @@ kernel/scripts/
 initramfs/build/
 initramfs/src/init/init
 initramfs/src/msh/msh
-initramfs/src/lup/lup
-initramfs/src/lup/lup_test
-initramfs/src/lup/lup_host
-initramfs/src/lup/*.o
+initramfs/src/cpm/cpm
+initramfs/src/cpm/cpm_test
+initramfs/src/cpm/cpm_host
+initramfs/src/cpm/*.o
 
 # Pachete
 packages/build/

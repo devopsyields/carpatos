@@ -1,6 +1,6 @@
 /* manifest.c — parsare si serializare manifest text key=value */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <stdio.h>
 #include <string.h>

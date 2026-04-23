@@ -1,15 +1,15 @@
-# Formatul `lup` si scrierea de pachete
+# Formatul `cpm` si scrierea de pachete
 
-`lup` e package managerul CarpatOS. Un pachet `.lup` e un singur fisier
+`cpm` e package managerul CarpatOS. Un pachet `.cpm` e un singur fisier
 binar care contine metadatele + arhiva tar cu fisierele de instalat.
 Acest document descrie formatul binar si cum se scrie un pachet nou.
 
-## Formatul binar `.lup`
+## Formatul binar `.cpm`
 
 ```
 +---------------------------+
 | Header (16 octeti LE)     |
-|  uint32 magic             |   0x0050554c  (ASCII "LUP\0")
+|  uint32 magic             |   0x004d5043  (ASCII "CPM\0")
 |  uint32 versiune_format   |   1
 |  uint32 manifest_len      |   nr octeti manifest text
 |  uint32 payload_len       |   nr octeti payload tar
@@ -45,23 +45,23 @@ descriere=Salutari din CarpatOS
 depinde=
 ```
 
-## Fisierul `LUPBUILD`
+## Fisierul `CPMBUILD`
 
 Fiecare pachet traieste intr-un director ce contine:
 
-- `LUPBUILD` — manifestul (acelasi format ca mai sus)
+- `CPMBUILD` — manifestul (acelasi format ca mai sus)
 - `build.sh` — script shell ce produce fisierele in `$DESTDIR`
 
 ## Scriptul `build.sh`
 
-`lup build` face `chdir` in directorul pachetului si apoi executa
+`cpm build` face `chdir` in directorul pachetului si apoi executa
 `sh ./build.sh` cu urmatoarele variabile de mediu setate:
 
 | Variabila | Continut |
 |---|---|
 | `DESTDIR` | Director temporar unde trebuie instalate fisierele |
-| `PKG_NUME` | `nume` din LUPBUILD |
-| `PKG_VERSIUNE` | `versiune` din LUPBUILD |
+| `PKG_NUME` | `nume` din CPMBUILD |
+| `PKG_VERSIUNE` | `versiune` din CPMBUILD |
 | `PKG_ARH` | `arhitectura` efectiva (inclusiv override `--arch`) |
 
 Toate fisierele scrise in `$DESTDIR` vor fi arhivate si intra in pachet
@@ -91,47 +91,47 @@ install -d "$DESTDIR/bin"
 $CC -O2 -Wall -static -s -o "$DESTDIR/bin/ecou" ecou.c
 ```
 
-## Comenzi `lup build`
+## Comenzi `cpm build`
 
 ```
-lup build <dir-pachet> [-o iesire.lup] [--arch <arh>]
+cpm build <dir-pachet> [-o iesire.cpm] [--arch <arh>]
 ```
 
-- `-o` — nume fisier de iesire (implicit `<nume>-<ver>-<arh>.lup`)
-- `--arch` — suprascrie `arhitectura` din LUPBUILD (util pentru pachetele
+- `-o` — nume fisier de iesire (implicit `<nume>-<ver>-<arh>.cpm`)
+- `--arch` — suprascrie `arhitectura` din CPMBUILD (util pentru pachetele
   native ce vor sa suporte mai multe arhitecturi dintr-o singura sursa)
 
 ## Operatii cu pachete
 
 ```
-lup install <nume>           # din repo (cauta in /var/lup/repos/*/index)
-lup local   <fisier.lup>     # dintr-un fisier local
-lup remove  <nume> [--force] # sterge (blocheaza daca alte pachete depind)
-lup list    [-a]             # listeaza instalate (-a include repo)
-lup search  <cuvant>         # cauta in nume + descriere
-lup info    <nume>           # arata manifestul
-lup update                   # reconstruieste indexul din *.lup din repo
+cpm install <nume>           # din repo (cauta in /var/cpm/repos/*/index)
+cpm local   <fisier.cpm>     # dintr-un fisier local
+cpm remove  <nume> [--force] # sterge (blocheaza daca alte pachete depind)
+cpm list    [-a]             # listeaza instalate (-a include repo)
+cpm search  <cuvant>         # cauta in nume + descriere
+cpm info    <nume>           # arata manifestul
+cpm update                   # reconstruieste indexul din *.cpm din repo
 ```
 
 Dependentele sunt rezolvate recursiv (DFS) cu detectare de cicluri.
 
 ## Baza de date de pachete instalate
 
-`lup` stocheaza in `/var/lup/db/installed/<nume>/`:
+`cpm` stocheaza in `/var/cpm/db/installed/<nume>/`:
 
 - `manifest` — copia manifestului pachetului
 - `files` — lista fisierelor instalate, relativa la `/` (pentru remove)
 
 ## Indexul de repo
 
-Un repo este un director in `/var/lup/repos/<nume-repo>/` care contine:
+Un repo este un director in `/var/cpm/repos/<nume-repo>/` care contine:
 
-- Fisierele `.lup` in sine
+- Fisierele `.cpm` in sine
 - Un fisier `index` — text, un pachet per linie, cu formatul:
   ```
-  nume|versiune|arhitectura|descriere|depinde|fisier.lup
+  nume|versiune|arhitectura|descriere|depinde|fisier.cpm
   ```
-  Reconstruit prin `lup update`.
+  Reconstruit prin `cpm update`.
 
 ## Limitari curente (MVP)
 

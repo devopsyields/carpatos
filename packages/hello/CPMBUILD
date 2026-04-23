@@ -1,4 +1,4 @@
-# LUPBUILD — pachet demo: hello (script shell)
+# CPMBUILD — pachet demo: hello (script shell)
 nume=hello
 versiune=1.0
 arhitectura=any

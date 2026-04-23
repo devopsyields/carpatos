@@ -1,4 +1,4 @@
-/* tar.c — USTAR read + write simplu pentru lup
+/* tar.c — USTAR read + write simplu pentru cpm
  *
  * Limitari MVP:
  *   - nume <= 100 octeti (fara GNU LongLink)
@@ -6,7 +6,7 @@
  *   - fara sparse, fara extinderi pax
  */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -96,7 +96,7 @@ int tar_extrage(const void *buf, size_t len, const char *dest_dir,
         size_t data_off = off;
         size_t data_blocuri = (sz + TAR_BLOC - 1) / TAR_BLOC;
         off += data_blocuri * TAR_BLOC;
-        if (off > len) { lup_err("tar: arhiva trunchiata"); return -1; }
+        if (off > len) { cpm_err("tar: arhiva trunchiata"); return -1; }
 
         char nume[300];
         if (h->prefix[0]) {
@@ -114,13 +114,13 @@ int tar_extrage(const void *buf, size_t len, const char *dest_dir,
         char cale[MAX_CALE + 64];
         if (dd_len == 0) {
             if ((size_t)snprintf(cale, sizeof(cale), "/%s", nume) >= sizeof(cale)) {
-                lup_err("tar: cale prea lunga: %s", nume);
+                cpm_err("tar: cale prea lunga: %s", nume);
                 return -1;
             }
         } else {
             if ((size_t)snprintf(cale, sizeof(cale), "%.*s/%s",
                                   (int)dd_len, dest_dir, nume) >= sizeof(cale)) {
-                lup_err("tar: cale prea lunga: %s", nume);
+                cpm_err("tar: cale prea lunga: %s", nume);
                 return -1;
             }
         }
@@ -146,7 +146,7 @@ int tar_extrage(const void *buf, size_t len, const char *dest_dir,
         } else if (typeflag == '2') {
             unlink(cale);
             if (symlink(h->linkname, cale) < 0) {
-                lup_err("tar: symlink %s -> %s: %s",
+                cpm_err("tar: symlink %s -> %s: %s",
                         cale, h->linkname, strerror(errno));
                 return -1;
             }
@@ -155,7 +155,7 @@ int tar_extrage(const void *buf, size_t len, const char *dest_dir,
             int fd = open(cale, O_WRONLY | O_CREAT | O_TRUNC,
                           (mode_t)(mode & 07777));
             if (fd < 0) {
-                lup_err("tar: nu pot crea %s: %s", cale, strerror(errno));
+                cpm_err("tar: nu pot crea %s: %s", cale, strerror(errno));
                 return -1;
             }
             size_t ramane = sz;
@@ -170,7 +170,7 @@ int tar_extrage(const void *buf, size_t len, const char *dest_dir,
             chmod(cale, (mode_t)(mode & 07777));
             if (jurnal) jurnal(cale, ctx);
         } else {
-            lup_debug("tar: ignorat tip %c pentru %s", typeflag, nume);
+            cpm_debug("tar: ignorat tip %c pentru %s", typeflag, nume);
         }
     }
     return 0;
@@ -213,7 +213,7 @@ static int adauga_intrare(Buffer *b, const char *nume_arh,
                            const char *continut, size_t cont_len,
                            const char *linkname) {
     if (strlen(nume_arh) >= 100) {
-        lup_err("tar: nume prea lung (>=100): %s", nume_arh);
+        cpm_err("tar: nume prea lung (>=100): %s", nume_arh);
         return -1;
     }
     Ustar h;
@@ -312,7 +312,7 @@ static int walk(const char *root, const char *rel, Buffer *b) {
         free(continut);
         return rc;
     }
-    lup_debug("tar: ignorat fisier special: %s", cale_disk);
+    cpm_debug("tar: ignorat fisier special: %s", cale_disk);
     return 0;
 }
 

@@ -1,6 +1,6 @@
-/* cmd_build.c — construieste un .lup dintr-un director sursa cu LUPBUILD + build.sh */
+/* cmd_build.c — construieste un .cpm dintr-un director sursa cu CPMBUILD + build.sh */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -11,11 +11,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-static int citeste_lupbuild(const char *cale, Manifest *m) {
+static int citeste_cpmbuild(const char *cale, Manifest *m) {
     size_t len;
     char *buf = citeste_fisier(cale, &len);
     if (!buf) {
-        lup_err("nu pot citi %s", cale);
+        cpm_err("nu pot citi %s", cale);
         return -1;
     }
     int rc = manifest_parseaza(buf, len, m);
@@ -25,7 +25,7 @@ static int citeste_lupbuild(const char *cale, Manifest *m) {
 
 int cmd_build(int argc, char **argv) {
     if (argc < 1) {
-        lup_err("folosire: lup build <dir> [-o <iesire.lup>]");
+        cpm_err("folosire: cpm build <dir> [-o <iesire.cpm>]");
         return 1;
     }
     const char *src = argv[0];
@@ -39,13 +39,13 @@ int cmd_build(int argc, char **argv) {
         }
     }
 
-    char cale_lupbuild[MAX_CALE + 64];
-    if ((size_t)snprintf(cale_lupbuild, sizeof(cale_lupbuild),
-                          "%s/LUPBUILD", src) >= sizeof(cale_lupbuild)) {
-        lup_err("cale prea lunga"); return 1;
+    char cale_cpmbuild[MAX_CALE + 64];
+    if ((size_t)snprintf(cale_cpmbuild, sizeof(cale_cpmbuild),
+                          "%s/CPMBUILD", src) >= sizeof(cale_cpmbuild)) {
+        cpm_err("cale prea lunga"); return 1;
     }
     Manifest m;
-    if (citeste_lupbuild(cale_lupbuild, &m) < 0) return 1;
+    if (citeste_cpmbuild(cale_cpmbuild, &m) < 0) return 1;
     if (arh_override) snprintf(m.arhitectura, sizeof(m.arhitectura), "%s", arh_override);
 
     char cale_build[MAX_CALE + 64];
@@ -53,22 +53,22 @@ int cmd_build(int argc, char **argv) {
                           "%s/build.sh", src) >= sizeof(cale_build)) return 1;
     struct stat stb;
     if (stat(cale_build, &stb) < 0) {
-        lup_err("lipseste build.sh in %s", src);
+        cpm_err("lipseste build.sh in %s", src);
         return 1;
     }
 
     /* DESTDIR temporar */
     char destdir[MAX_CALE];
     if ((size_t)snprintf(destdir, sizeof(destdir),
-                          "/tmp/lup-build-%d-%s",
+                          "/tmp/cpm-build-%d-%s",
                           (int)getpid(), m.nume) >= sizeof(destdir)) return 1;
     sterge_recursiv(destdir);
     if (asigura_dir(destdir) < 0) {
-        lup_err("nu pot crea %s: %s", destdir, strerror(errno));
+        cpm_err("nu pot crea %s: %s", destdir, strerror(errno));
         return 1;
     }
 
-    lup_info("Construiesc %s-%s (DESTDIR=%s)",
+    cpm_info("Construiesc %s-%s (DESTDIR=%s)",
              m.nume, m.versiune, destdir);
 
     /* Cale absoluta pentru src — vom face chdir(src), DESTDIR e absolut deja */
@@ -78,17 +78,17 @@ int cmd_build(int argc, char **argv) {
     } else {
         char cwd[MAX_CALE];
         if (!getcwd(cwd, sizeof(cwd))) {
-            lup_err("getcwd esuat"); sterge_recursiv(destdir); return 1;
+            cpm_err("getcwd esuat"); sterge_recursiv(destdir); return 1;
         }
         if ((size_t)snprintf(src_abs, sizeof(src_abs),
                               "%s/%s", cwd, src) >= sizeof(src_abs)) {
-            lup_err("cale src prea lunga"); sterge_recursiv(destdir); return 1;
+            cpm_err("cale src prea lunga"); sterge_recursiv(destdir); return 1;
         }
     }
 
     pid_t pid = fork();
     if (pid < 0) {
-        lup_err("fork esuat: %s", strerror(errno));
+        cpm_err("fork esuat: %s", strerror(errno));
         sterge_recursiv(destdir);
         return 1;
     }
@@ -108,7 +108,7 @@ int cmd_build(int argc, char **argv) {
     int status = 0;
     waitpid(pid, &status, 0);
     if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        lup_err("build.sh a esuat (status raw=%d)", status);
+        cpm_err("build.sh a esuat (status raw=%d)", status);
         sterge_recursiv(destdir);
         return 1;
     }
@@ -116,7 +116,7 @@ int cmd_build(int argc, char **argv) {
     void *payload;
     size_t plen;
     if (tar_construieste(destdir, &payload, &plen) < 0) {
-        lup_err("constructia tar-ului a esuat");
+        cpm_err("constructia tar-ului a esuat");
         sterge_recursiv(destdir);
         return 1;
     }
@@ -126,18 +126,18 @@ int cmd_build(int argc, char **argv) {
         snprintf(nume_out, sizeof(nume_out), "%s", out);
     } else {
         if ((size_t)snprintf(nume_out, sizeof(nume_out),
-                              "%s-%s-%s.lup",
+                              "%s-%s-%s.cpm",
                               m.nume, m.versiune,
                               m.arhitectura) >= sizeof(nume_out)) {
             free(payload); sterge_recursiv(destdir); return 1;
         }
     }
 
-    if (lup_salveaza(nume_out, &m, payload, plen) < 0) {
+    if (cpm_salveaza(nume_out, &m, payload, plen) < 0) {
         free(payload); sterge_recursiv(destdir); return 1;
     }
     free(payload);
     sterge_recursiv(destdir);
-    lup_info("Pachet construit: %s (%zu octeti payload)", nume_out, plen);
+    cpm_info("Pachet construit: %s (%zu octeti payload)", nume_out, plen);
     return 0;
 }

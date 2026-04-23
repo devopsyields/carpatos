@@ -1,6 +1,6 @@
 /* cmd_remove.c — dezinstalare cu verificare reverse-deps */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,7 +64,7 @@ int cmd_remove(int argc, char **argv) {
         }
     }
     if (np == 0) {
-        lup_err("folosire: lup remove <pachet>... [--force|-f]");
+        cpm_err("folosire: cpm remove <pachet>... [--force|-f]");
         free(pachete);
         return 1;
     }
@@ -73,7 +73,7 @@ int cmd_remove(int argc, char **argv) {
     for (int i = 0; i < np; i++) {
         const char *nume = pachete[i];
         if (!db_este_instalat(nume)) {
-            lup_err("%s nu este instalat", nume);
+            cpm_err("%s nu este instalat", nume);
             rc = 1;
             continue;
         }
@@ -82,7 +82,7 @@ int cmd_remove(int argc, char **argv) {
             int nrev = 0;
             db_reverse_deps(nume, &rev, &nrev);
             if (nrev > 0) {
-                fprintf(stderr, "lup: eroare: %s este cerut de:", nume);
+                fprintf(stderr, "cpm: eroare: %s este cerut de:", nume);
                 for (int j = 0; j < nrev; j++)
                     fprintf(stderr, " %s", rev[j]);
                 fprintf(stderr, "\n");
@@ -99,11 +99,11 @@ int cmd_remove(int argc, char **argv) {
         char *fisiere = db_citeste_fisiere(nume);
         if (fisiere) { sterge_fisiere(fisiere); free(fisiere); }
         if (db_sterge_pachet(nume) < 0) {
-            lup_err("nu pot sterge intrarea db pentru %s", nume);
+            cpm_err("nu pot sterge intrarea db pentru %s", nume);
             rc = 1;
             continue;
         }
-        lup_info("Dezinstalat: %s", nume);
+        cpm_info("Dezinstalat: %s", nume);
     }
     free(pachete);
     return rc;

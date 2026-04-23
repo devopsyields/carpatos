@@ -1,6 +1,6 @@
 /* cmd_query.c — list, search, info, update */
 #define _GNU_SOURCE
-#include "lup.h"
+#include "cpm.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +16,7 @@ int cmd_list(int argc, char **argv) {
         int n;
         if (repo_listeaza(&lista, &n) < 0) return 1;
         if (n == 0) {
-            lup_info("(niciun pachet disponibil)");
+            cpm_info("(niciun pachet disponibil)");
             free(lista);
             return 0;
         }
@@ -31,7 +31,7 @@ int cmd_list(int argc, char **argv) {
         int n;
         if (db_listeaza(&nume, &n) < 0) return 1;
         if (n == 0) {
-            lup_info("(niciun pachet instalat)");
+            cpm_info("(niciun pachet instalat)");
             free(nume);
             return 0;
         }
@@ -50,7 +50,7 @@ int cmd_list(int argc, char **argv) {
 
 int cmd_search(int argc, char **argv) {
     if (argc < 1) {
-        lup_err("folosire: lup search <termen>");
+        cpm_err("folosire: cpm search <termen>");
         return 1;
     }
     Manifest *lista;
@@ -66,13 +66,13 @@ int cmd_search(int argc, char **argv) {
         }
     }
     free(lista);
-    if (gasite == 0) lup_info("(nicio potrivire)");
+    if (gasite == 0) cpm_info("(nicio potrivire)");
     return 0;
 }
 
 int cmd_info(int argc, char **argv) {
     if (argc < 1) {
-        lup_err("folosire: lup info <pachet>");
+        cpm_err("folosire: cpm info <pachet>");
         return 1;
     }
     Manifest m;
@@ -86,7 +86,7 @@ int cmd_info(int argc, char **argv) {
         manifest_afiseaza(&m);
         return 0;
     }
-    lup_err("pachetul '%s' nu a fost gasit", argv[0]);
+    cpm_err("pachetul '%s' nu a fost gasit", argv[0]);
     return 1;
 }
 

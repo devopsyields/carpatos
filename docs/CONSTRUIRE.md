@@ -114,7 +114,7 @@ Dupa un build complet (`<arch>` = `x86_64` sau `aarch64`):
 kernel/build/<arch>/vmlinuz                 ~15-40 MB
 initramfs/build/<arch>/initramfs.cpio.gz    ~50-300 KB
 build/<arch>/carpatos-<arch>.iso            ~20-50 MB
-packages/build/<arch>/*.lup                 cateva KB fiecare
+packages/build/<arch>/*.cpm                 cateva KB fiecare
 ```
 
 ## Rularea in QEMU

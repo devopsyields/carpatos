@@ -6,7 +6,7 @@
    instaleaza dupa boot, nu se includ implicit.
 2. **Totul scris in C** (plus assembly unde-l cere kernelul Linux).
 3. **musl libc, static linked** — binarele au zero dependente runtime.
-4. **Propriul package manager** (`lup`) — nu reutilizam apk/rpm/deb.
+4. **Propriul package manager** (`cpm`) — nu reutilizam apk/rpm/deb.
 5. **Output in limba romana** — stringuri, mesaje de eroare, documentatie.
    Identificatorii in cod raman in engleza pentru compatibilitate POSIX.
 
@@ -53,7 +53,7 @@ In MVP, tot filesystem-ul e un tmpfs populat din initramfs:
 ├── sys/                    sysfs
 ├── tmp/                    tmpfs (1777)
 ├── run/                    tmpfs (1777)
-├── var/                    pentru /var/lup/db (ulterior)
+├── var/                    pentru /var/cpm/db (ulterior)
 └── etc/                    pentru /etc/inittab, /etc/fstab (ulterior)
 ```
 
@@ -90,15 +90,15 @@ Pentru MVP, initramfs e suficient — totul traieste in RAM. Cand adaugam
 instalatorul (Faza 4), rootul va fi pe disk (ext4), cu /init care decide
 daca booteaza live sau din instalare persistenta.
 
-## Package manager `lup` (Faza 3)
+## Package manager `cpm` (Faza 3)
 
 ### Format pachet
 
 ```
-.lup = antet binar (16 octeti) + manifest JSON + payload tar+zstd
+.cpm = antet binar (16 octeti) + manifest JSON + payload tar+zstd
 
 Antet:
-  [0-3]   Magic: "LUP\0"
+  [0-3]   Magic: "CPM\0"
   [4]     Versiune format (1)
   [5-7]   Rezervat (0)
   [8-11]  Lungime manifest (LE)
@@ -123,7 +123,7 @@ Antet:
 ### Baza de date locala
 
 ```
-/var/lup/
+/var/cpm/
 ├── db/
 │   ├── installed/
 │   │   └── <nume>-<versiune>/
@@ -138,14 +138,14 @@ Antet:
 ### Comenzi
 
 ```
-lup install <pachet...>   — instaleaza pachete + dependente
-lup remove <pachet...>    — dezinstaleaza
-lup list                  — listeaza pachete instalate
-lup list -a               — listeaza toate pachetele disponibile
-lup search <termen>       — cautare in repo
-lup info <pachet>         — detalii pachet
-lup update                — actualizeaza indexul repo
-lup upgrade               — actualizeaza pachetele instalate
+cpm install <pachet...>   — instaleaza pachete + dependente
+cpm remove <pachet...>    — dezinstaleaza
+cpm list                  — listeaza pachete instalate
+cpm list -a               — listeaza toate pachetele disponibile
+cpm search <termen>       — cautare in repo
+cpm info <pachet>         — detalii pachet
+cpm update                — actualizeaza indexul repo
+cpm upgrade               — actualizeaza pachetele instalate
 ```
 
 ## Faze viitoare — preview tehnic
@@ -165,7 +165,7 @@ TUI simplu in C (probabil peste ncurses sau terminal raw). Pasii:
 Kernel Linux ne da stack-ul TCP/IP gratis. Trebuie:
 - DHCP client propriu (sau udhcpc static din busybox)
 - Configuratie /etc/resolv.conf
-- `lup` cu suport HTTP prin libcurl static sau implementare proprie HTTP/1.1
+- `cpm` cu suport HTTP prin libcurl static sau implementare proprie HTTP/1.1
   (cred ca scriem propriu, ~1500 LoC — e doar client GET, fara TLS initial)
 
 ### Faza 6+: Desktop

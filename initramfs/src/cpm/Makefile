@@ -1,4 +1,4 @@
-## Makefile — lup CarpatOS
+## Makefile — cpm CarpatOS
 ##
 ## Suporta cross-build pentru x86_64 si aarch64 cu musl-cross.
 ##   make ARCH=x86_64
@@ -16,7 +16,7 @@ CFLAGS   := -std=c11 -Wall -Wextra -Werror -O2 \
             -I../common $(CFLAGS_EXTRA)
 LDFLAGS  ?= -static -no-pie -s
 
-TARGET   := lup
+TARGET   := cpm
 SOURCES  := util.c manifest.c tar.c pkg.c db.c repo.c \
             cmd_install.c cmd_remove.c cmd_query.c cmd_build.c main.c
 OBJECTS  := $(SOURCES:.c=.o)
@@ -29,11 +29,11 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^
 	-$(STRIP) $@
 
-%.o: %.c lup.h
+%.o: %.c cpm.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 install: $(TARGET)
-	install -D -m 0755 $(TARGET) $(DESTDIR)/bin/lup
+	install -D -m 0755 $(TARGET) $(DESTDIR)/bin/cpm
 
 clean:
-	rm -f $(TARGET) $(OBJECTS)
+	rm -f $(TARGET) cpm_host $(OBJECTS)
