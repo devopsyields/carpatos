@@ -74,11 +74,26 @@ else
     # aarch64: UEFI-only (Limine pe aarch64 nu suporta BIOS)
     cp "$LIMINE_DIR/limine-uefi-cd.bin"  "$ISO_ROOT/boot/limine/"
 
-    echo "==> Generez ISO UEFI-only pentru aarch64 cu xorriso"
+    # Construiesc un EFI System Partition (FAT) cu BOOTAA64.EFI inauntru.
+    # Necesar ca firmware-urile care trateaza ISO-ul ca DISC (nu CD),
+    # cum face Apple Virtualization.framework, sa gaseasca bootloader-ul
+    # prin GPT + ESP, nu prin El Torito CD boot catalog.
+    ESP_IMG="$BUILD/esp-aarch64.img"
+    echo "==> Construiesc EFI System Partition FAT pentru hibrid ISO"
+    rm -f "$ESP_IMG"
+    # 33 MB e minimul pentru FAT32 (cerut de mformat -F).
+    # FAT16 pe 4MB ar merge dar UEFI detecteaza mai robust FAT32.
+    dd if=/dev/zero of="$ESP_IMG" bs=1M count=33 status=none
+    mformat -i "$ESP_IMG" -F ::
+    mmd -i "$ESP_IMG" ::/EFI ::/EFI/BOOT
+    mcopy -i "$ESP_IMG" "$LIMINE_DIR/$EFI_BIN" ::/EFI/BOOT/$EFI_TARGET
+
+    echo "==> Generez ISO hibrid aarch64 (El Torito + GPT/ESP)"
     xorriso -as mkisofs \
         -R -r -J \
         --efi-boot boot/limine/limine-uefi-cd.bin \
         -efi-boot-part --efi-boot-image --protective-msdos-label \
+        -append_partition 2 0xef "$ESP_IMG" \
         -V "CARPATOS" \
         "$ISO_ROOT" -o "$ISO_OUT"
 fi
