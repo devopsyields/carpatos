@@ -69,10 +69,37 @@ static void reaper(int semnal) {
     }
 }
 
-/* Redirectez stdin/stdout/stderr catre /dev/console (daca exista) */
-static void atasare_consola(void) {
-    int fd = open("/dev/console", O_RDWR);
+/* Scriu un mesaj de debug in kernel log ring buffer (apare in dmesg /
+ * pe console) — util cand stdout-ul init-ului nu e inca conectat. */
+static void kmsg(const char *s) {
+    int fd = open("/dev/kmsg", O_WRONLY);
     if (fd < 0) return;
+    size_t len = strlen(s);
+    write(fd, s, len);
+    close(fd);
+}
+
+/* Redirectez stdin/stdout/stderr catre prima consola disponibila.
+ * Incerc in ordine: /dev/console, /dev/hvc0 (virtio-console — Apple Vz),
+ * /dev/ttyAMA0 (PL011 — QEMU virt), /dev/tty0 (framebuffer). */
+static void atasare_consola(void) {
+    const char *candidati[] = {
+        "/dev/console", "/dev/hvc0", "/dev/ttyAMA0", "/dev/tty0", NULL
+    };
+    int fd = -1;
+    for (int i = 0; candidati[i]; i++) {
+        fd = open(candidati[i], O_RDWR);
+        if (fd >= 0) {
+            kmsg("[init] consola: ");
+            kmsg(candidati[i]);
+            kmsg("\n");
+            break;
+        }
+    }
+    if (fd < 0) {
+        kmsg("[init] EROARE: nicio consola nu a putut fi deschisa\n");
+        return;
+    }
     dup2(fd, 0);
     dup2(fd, 1);
     dup2(fd, 2);
@@ -80,6 +107,10 @@ static void atasare_consola(void) {
 }
 
 int main(void) {
+    /* 0. Semnal early in kernel log ca init ruleaza (inainte de mounts,
+     *    /dev/kmsg e accesibil pentru ca devtmpfs e auto-mounted) */
+    kmsg("[init] main() a pornit\n");
+
     /* 1. Montez pseudo-filesystem-urile esentiale */
     monteaza("proc",     "/proc", "proc",     0);
     monteaza("sysfs",    "/sys",  "sysfs",    0);
@@ -88,7 +119,9 @@ int main(void) {
     monteaza("tmpfs",    "/run",  "tmpfs",    0);
 
     /* 2. Atasez consola */
+    kmsg("[init] atasare consola\n");
     atasare_consola();
+    kmsg("[init] consola atasata, incerc banner\n");
 
     /* 3. Instalez handler pentru SIGCHLD */
     struct sigaction sa = {0};

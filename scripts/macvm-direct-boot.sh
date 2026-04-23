@@ -34,11 +34,12 @@ echo "==> Copiez vmlinuz + initramfs in bundle-ul $BUNDLE_NAME"
 cp "$KERNEL_SRC"  "$BUNDLE/vmlinuz"
 cp "$INITRD_SRC"  "$BUNDLE/initramfs.cpio.gz"
 
-# Commandline pentru kernel: aarch64 Apple Vz expune:
-#   - VZVirtioConsoleDevice — vezi hvc0 in /proc/consoles (nu ttyAMA0)
-#   - VZVirtioGraphicsDevice — framebuffer tty0
-# rdinit=/init pentru CarpatOS (msh-based boot).
-CMDLINE="console=hvc0 console=tty0 rdinit=/init"
+# Commandline pentru kernel: aarch64 Apple Vz expune hvc0 (virtio-console,
+# conectat la serial.log prin VZVirtioConsoleDeviceSerialPortConfiguration).
+# Kernel Linux alege ULTIMUL console= ca default (/dev/console target), asa
+# ca lasam doar hvc0 — init-ul si msh vor scrie/citi prin serial.log.
+# Framebuffer (tty0) apare oricum pentru cine urmareste fereastra VM.
+CMDLINE="console=hvc0 rdinit=/init"
 
 echo "==> Rescriu config.json pentru direct Linux boot"
 # Citesc id + setari existente si le pastrez, schimb doar bootloader +
