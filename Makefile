@@ -22,7 +22,7 @@
 ARCH ?= x86_64
 export ARCH
 
-.PHONY: all kernel initramfs iso run run-iso run-uefi packages clean distclean help
+.PHONY: all kernel initramfs iso disk run run-iso run-uefi run-disk packages clean distclean help
 
 all: kernel initramfs iso
 
@@ -34,6 +34,9 @@ initramfs:
 
 iso: kernel initramfs
 	./scripts/build-iso.sh $(ARCH)
+
+disk: kernel initramfs
+	./scripts/build-disk.sh $(ARCH)
 
 run: kernel initramfs
 	./scripts/run-qemu.sh $(ARCH) direct
@@ -63,6 +66,7 @@ help:
 	@echo "  make kernel                  — doar kernelul"
 	@echo "  make initramfs               — doar initramfs"
 	@echo "  make iso                     — genereaza ISO bootabil"
+	@echo "  make disk                    — genereaza disk image .img (Apple Vz)"
 	@echo "  make run                     — boot direct in QEMU"
 	@echo "  make run-iso                 — boot ISO (BIOS pe x86)"
 	@echo "  make run-uefi                — boot ISO (UEFI)"

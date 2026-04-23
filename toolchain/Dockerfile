@@ -37,6 +37,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         # ISO creation
         xorriso \
         mtools \
+        # GPT disk creation (pentru .img raw cu ESP)
+        gdisk \
+        dosfstools \
         # Testing — QEMU pentru ambele arhitecturi
         qemu-system-x86 \
         qemu-system-arm \
