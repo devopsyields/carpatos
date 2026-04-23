@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -79,13 +80,37 @@ static void kmsg(const char *s) {
     close(fd);
 }
 
-/* Redirectez stdin/stdout/stderr catre prima consola disponibila.
- * Incerc in ordine: /dev/console, /dev/hvc0 (virtio-console — Apple Vz),
- * /dev/ttyAMA0 (PL011 — QEMU virt), /dev/tty0 (framebuffer). */
+/* Astept ca framebuffer + VT sa fie gata (virtio-gpu pe Apple Vz, simpleFB
+ * pe QEMU/Parallels). Pragul e /sys/class/drm/card0 pentru DRM sau
+ * /dev/fb0 pentru fbdev clasic. Timeout 2 secunde ca sa nu blocam daca
+ * hardware-ul nu are framebuffer deloc (ex: QEMU -nographic). */
+static int asteapta_framebuffer(void) {
+    for (int i = 0; i < 200; i++) {  /* 200 * 10ms = 2s */
+        if (access("/sys/class/drm/card0", F_OK) == 0) return 1;
+        if (access("/dev/fb0", F_OK) == 0) return 1;
+        usleep(10000);
+    }
+    return 0;
+}
+
+/* Redirectez stdin/stdout/stderr catre prima consola utilizabila.
+ * Prioritate: /dev/tty1 daca framebuffer-ul e gata (display + tastatura
+ * in fereastra VM pe Apple Vz / Parallels / bare metal); fallback la
+ * /dev/console, hvc0, ttyAMA0 pentru serial-only boot (QEMU -nographic). */
 static void atasare_consola(void) {
-    const char *candidati[] = {
-        "/dev/console", "/dev/hvc0", "/dev/ttyAMA0", "/dev/tty0", NULL
-    };
+    const char *candidati[5];
+    int n = 0;
+    if (asteapta_framebuffer()) {
+        kmsg("[init] framebuffer gata, prefer /dev/tty1\n");
+        candidati[n++] = "/dev/tty1";
+    } else {
+        kmsg("[init] fara framebuffer, folosesc serial/virtio-console\n");
+    }
+    candidati[n++] = "/dev/console";
+    candidati[n++] = "/dev/hvc0";
+    candidati[n++] = "/dev/ttyAMA0";
+    candidati[n] = NULL;
+
     int fd = -1;
     for (int i = 0; candidati[i]; i++) {
         fd = open(candidati[i], O_RDWR);
@@ -100,6 +125,11 @@ static void atasare_consola(void) {
         kmsg("[init] EROARE: nicio consola nu a putut fi deschisa\n");
         return;
     }
+    /* Sesiune noua + controlling terminal pentru tty1 — altfel Ctrl+C nu
+     * ajunge la msh si citirile blocheaza fara input handling corect.
+     * setsid() esueaza silent daca suntem deja leader (PID 1 e). */
+    setsid();
+    ioctl(fd, TIOCSCTTY, 0);
     dup2(fd, 0);
     dup2(fd, 1);
     dup2(fd, 2);

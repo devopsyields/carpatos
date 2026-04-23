@@ -39,7 +39,7 @@ cp "$INITRD_SRC"  "$BUNDLE/initramfs.cpio.gz"
 # Kernel Linux alege ULTIMUL console= ca default (/dev/console target), asa
 # ca lasam doar hvc0 — init-ul si msh vor scrie/citi prin serial.log.
 # Framebuffer (tty0) apare oricum pentru cine urmareste fereastra VM.
-CMDLINE="console=hvc0 rdinit=/init"
+CMDLINE="console=hvc0 console=tty1 rdinit=/init"
 
 echo "==> Rescriu config.json pentru direct Linux boot"
 # Citesc id + setari existente si le pastrez, schimb doar bootloader +
