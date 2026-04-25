@@ -167,8 +167,11 @@ static int gaseste_sau_descarca(const Manifest *m, char *cale_cpm,
     }
     if (asigura_dir(DIR_CACHE) < 0) return -1;
 
+    /* URL = <base>/<fisier>. Daca tool-ul de generare repo a pus prefix
+     * (ex: "pool/x.cpm" pentru hosting cu structura), e respectat. Pentru
+     * GitHub Releases (toate asset-uri flat), fisier e doar nume. */
     char url[MAX_CALE + 128];
-    if ((size_t)snprintf(url, sizeof(url), "%s/pool/%s",
+    if ((size_t)snprintf(url, sizeof(url), "%s/%s",
                           base_url, m->fisier) >= sizeof(url)) {
         cpm_err("URL prea lung pentru %s", m->fisier);
         return -1;
