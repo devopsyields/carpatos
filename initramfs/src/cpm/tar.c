@@ -77,9 +77,12 @@ int tar_extrage(const void *buf, size_t len, const char *dest_dir,
     const char *p = (const char *)buf;
     size_t off = 0;
 
-    /* normalizam dest_dir: strip trailing '/' */
+    /* normalizam dest_dir: strip trailing '/'.
+     * Cazul special "/" -> dd_len = 0, calea finala va fi '/' + nume
+     * (fara dubla bara). */
     size_t dd_len = strlen(dest_dir);
     while (dd_len > 1 && dest_dir[dd_len - 1] == '/') dd_len--;
+    if (dd_len == 1 && dest_dir[0] == '/') dd_len = 0;
 
     while (off + TAR_BLOC <= len) {
         const Ustar *h = (const Ustar *)(p + off);
@@ -106,8 +109,22 @@ int tar_extrage(const void *buf, size_t len, const char *dest_dir,
         }
         if (nume[0] == '\0') continue;
 
-        /* elimina eventual '/' final din numele intrarii */
+        /* normalizeaza numele intrarii:
+         *   - strip "./" si "/" duplicate la inceput (comun in .deb: "./usr/...")
+         *   - strip "/" final */
         size_t nl = strlen(nume);
+        size_t idx = 0;
+        while (idx < nl) {
+            if (nume[idx] == '/') { idx++; continue; }
+            if (nume[idx] == '.' && idx + 1 < nl && nume[idx + 1] == '/') {
+                idx += 2; continue;
+            }
+            break;
+        }
+        if (idx > 0) {
+            memmove(nume, nume + idx, nl - idx + 1);
+            nl -= idx;
+        }
         while (nl > 0 && nume[nl - 1] == '/') nume[--nl] = '\0';
         if (nl == 0) continue;
 
