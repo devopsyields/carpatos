@@ -81,4 +81,6 @@ void manifest_afiseaza(const Manifest *m) {
     printf("Arhitectura: %s\n", m->arhitectura);
     printf("Descriere:   %s\n", m->descriere);
     printf("Depinde:     %s\n", m->depinde[0] ? m->depinde : "(nimic)");
+    if (m->sha256[0])
+        printf("SHA-256:     %s\n", m->sha256);
 }

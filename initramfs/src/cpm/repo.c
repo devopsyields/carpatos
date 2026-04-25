@@ -1,7 +1,11 @@
 /* repo.c — index de repo simplu
  *
  * Format repo.index (o linie / pachet):
- *   nume|versiune|arh|descriere|dep1,dep2|fisier.cpm
+ *   nume|versiune|arh|descriere|dep1,dep2|fisier.cpm|sha256
+ *
+ * Campul sha256 e optional pentru compatibilitate cu repo-uri vechi —
+ * absenta lui inseamna "no integrity check" (acceptabil pentru repo-uri
+ * locale, refuzat pe download remote).
  */
 #define _GNU_SOURCE
 #include "cpm.h"
@@ -13,22 +17,24 @@
 
 static int parseaza_linie(char *linie, Manifest *m) {
     memset(m, 0, sizeof(*m));
-    char *campuri[6] = {0};
+    char *campuri[7] = {0};
     int n = 0;
     campuri[n++] = linie;
     for (char *p = linie; *p; p++) {
         if (*p == '|') {
             *p = '\0';
-            if (n < 6) campuri[n++] = p + 1;
+            if (n < 7) campuri[n++] = p + 1;
         }
     }
-    if (n < 6) return -1;
+    if (n < 6) return -1;  /* min 6 campuri (sha256 optional) */
     snprintf(m->nume,        sizeof(m->nume),        "%s", campuri[0]);
     snprintf(m->versiune,    sizeof(m->versiune),    "%s", campuri[1]);
     snprintf(m->arhitectura, sizeof(m->arhitectura), "%s", campuri[2]);
     snprintf(m->descriere,   sizeof(m->descriere),   "%s", campuri[3]);
     snprintf(m->depinde,     sizeof(m->depinde),     "%s", campuri[4]);
     snprintf(m->fisier,      sizeof(m->fisier),      "%s", campuri[5]);
+    if (n >= 7 && campuri[6])
+        snprintf(m->sha256,  sizeof(m->sha256),      "%s", campuri[6]);
     return 0;
 }
 
@@ -117,9 +123,16 @@ int repo_actualizeaza_index(void) {
             continue;
         }
         free(payload);
-        fprintf(idx, "%s|%s|%s|%s|%s|%s\n",
+
+        char hash[MAX_SHA256] = "";
+        if (sha256_file(cale, hash) < 0) {
+            cpm_err("ignorat (sha256 esuat): %s", nume);
+            continue;
+        }
+
+        fprintf(idx, "%s|%s|%s|%s|%s|%s|%s\n",
                 m.nume, m.versiune, m.arhitectura,
-                m.descriere, m.depinde, nume);
+                m.descriere, m.depinde, nume, hash);
         nr++;
     }
     closedir(d);

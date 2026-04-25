@@ -24,6 +24,7 @@
 #define MAX_VERSIUNE        32
 #define MAX_ARH             16
 #define MAX_DESCRIERE       256
+#define MAX_SHA256          65       /* 64 hex + null */
 
 /* Path-urile sunt construite la startup din CPM_ROOT (env, optional) +
  * subcai fixe. Permite rularea cpm_host la build cu CPM_ROOT=rootfs/.
@@ -57,11 +58,16 @@ typedef struct {
     char descriere[MAX_DESCRIERE];
     char depinde[MAX_CALE];      /* "pkg1,pkg2,..." */
     char fisier[MAX_CALE];       /* folosit doar in repo.index */
+    char sha256[MAX_SHA256];     /* hex; in repo.index, hash al .cpm */
 } Manifest;
 
 int  manifest_parseaza(const char *text, size_t len, Manifest *m);
 int  manifest_serializeaza(const Manifest *m, char *buf, size_t cap);
 void manifest_afiseaza(const Manifest *m);
+
+/* ===== sha256 ===== */
+void sha256_buf(const void *data, size_t len, char out_hex[65]);
+int  sha256_file(const char *cale, char out_hex[65]);
 
 /* ===== tar USTAR ===== */
 int  tar_extrage(const void *buf, size_t len, const char *dest_dir,
