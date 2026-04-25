@@ -161,7 +161,22 @@ int tar_extrage(const void *buf, size_t len, const char *dest_dir,
             asigura_dir(cale);
             if (jurnal) jurnal(cale, ctx);
         } else if (typeflag == '2') {
-            unlink(cale);
+            /* Daca exista un director gol pe calea destinatie (creat de un
+             * pachet anterior), il stergem ca sa putem face symlink. Cazul
+             * tipic Debian: /usr/share/doc/<x> facut dir de un pachet si
+             * symlink de altul. */
+            struct stat st;
+            if (lstat(cale, &st) == 0) {
+                if (S_ISDIR(st.st_mode)) {
+                    if (rmdir(cale) < 0) {
+                        cpm_err("tar: %s e director nevid, nu pot face symlink",
+                                cale);
+                        return -1;
+                    }
+                } else {
+                    unlink(cale);
+                }
+            }
             if (symlink(h->linkname, cale) < 0) {
                 cpm_err("tar: symlink %s -> %s: %s",
                         cale, h->linkname, strerror(errno));
