@@ -51,13 +51,16 @@ static void lista_elibereaza(Lista *l) {
     l->n = l->cap = 0;
 }
 
-/* DFS topologic — completeaza "ordine"; "in_curs" detecteaza ciclurile */
+/* DFS aprox. topologic — completeaza "ordine".
+ * Pachetele de baza Ubuntu au cicluri legitime (libc6 <-> libgcc-s1).
+ * Cand detectam un ciclu, doar logam si continuam — pachetele se vor
+ * instala amandoua, ordinea exacta nu mai e strict topologica. */
 static int rezolva(const char *nume, Lista *ordine, Lista *in_curs) {
     if (db_este_instalat(nume)) return 0;
     if (lista_contine(ordine, nume)) return 0;
     if (lista_contine(in_curs, nume)) {
-        cpm_err("ciclu de dependente la pachetul %s", nume);
-        return -1;
+        cpm_debug("ciclu detectat la %s, continui", nume);
+        return 0;
     }
     if (lista_adauga(in_curs, nume) < 0) return -1;
 
