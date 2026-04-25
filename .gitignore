@@ -30,6 +30,10 @@ packages/build/
 *~
 .DS_Store
 
+# Python
+__pycache__/
+*.pyc
+
 # Alpine-based overlay artefacte
 alpine-based/iso-contents/
 alpine-based/alpine-virt-*.iso
