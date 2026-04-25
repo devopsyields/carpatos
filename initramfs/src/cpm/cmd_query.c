@@ -93,5 +93,28 @@ int cmd_info(int argc, char **argv) {
 int cmd_update(int argc, char **argv) {
     (void)argc;
     (void)argv;
+    char base_url[MAX_CALE];
+    if (cpm_repo_url(base_url, sizeof(base_url)) == 0) {
+        char url[MAX_CALE + 64];
+        if ((size_t)snprintf(url, sizeof(url), "%s/repo.index",
+                              base_url) >= sizeof(url)) {
+            cpm_err("URL prea lung");
+            return 1;
+        }
+        if (asigura_dir(DIR_DB) < 0) {
+            cpm_err("nu pot crea %s", DIR_DB);
+            return 1;
+        }
+        cpm_info("Descarc %s", url);
+        if (http_descarca(url, FILE_REPO_INDEX) < 0) return 1;
+        Manifest *lista = NULL;
+        int n = 0;
+        if (repo_listeaza(&lista, &n) == 0) {
+            cpm_info("Index repo descarcat: %d pachete", n);
+            free(lista);
+        }
+        return 0;
+    }
+    /* fallback: scanare locala */
     return repo_actualizeaza_index() < 0 ? 1 : 0;
 }

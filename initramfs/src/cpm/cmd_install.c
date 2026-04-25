@@ -5,6 +5,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+/* Destinatia de extractie: CPM_ROOT daca e setat, altfel "/". Permite
+ * cpm sa fie folosit pentru staged build (CPM_ROOT=rootfs/ ...). */
+static const char *dest_root(void) {
+    const char *r = getenv("CPM_ROOT");
+    if (r && *r) return r;
+    return "/";
+}
 
 typedef struct {
     char **items;
@@ -136,12 +145,61 @@ static int extrage_si_inregistreaza(const Manifest *m, const char *cale_cpm,
     return 0;
 }
 
+/* Cauta .cpm-ul: intai in DIR_REPO (local), apoi in DIR_CACHE (descarcat
+ * deja), in final descarca de la repo URL. Verifica sha256 daca avem
+ * referinta in repo.index. */
+static int gaseste_sau_descarca(const Manifest *m, char *cale_cpm,
+                                 size_t cap) {
+    if ((size_t)snprintf(cale_cpm, cap, "%s/%s",
+                          DIR_REPO, m->fisier) >= cap) return -1;
+    if (access(cale_cpm, R_OK) == 0) return 0;
+
+    if ((size_t)snprintf(cale_cpm, cap, "%s/%s",
+                          DIR_CACHE, m->fisier) >= cap) return -1;
+    if (access(cale_cpm, R_OK) == 0) return 0;
+
+    /* trebuie descarcat */
+    char base_url[MAX_CALE];
+    if (cpm_repo_url(base_url, sizeof(base_url)) < 0) {
+        cpm_err("pachet '%s' lipsa local si URL repo nesetat "
+                "(setati CPM_REPO_URL sau /etc/cpm/repo.url)", m->nume);
+        return -1;
+    }
+    if (asigura_dir(DIR_CACHE) < 0) return -1;
+
+    char url[MAX_CALE + 128];
+    if ((size_t)snprintf(url, sizeof(url), "%s/pool/%s",
+                          base_url, m->fisier) >= sizeof(url)) {
+        cpm_err("URL prea lung pentru %s", m->fisier);
+        return -1;
+    }
+    cpm_info("Descarc %s", url);
+    if (http_descarca(url, cale_cpm) < 0) return -1;
+    return 0;
+}
+
+static int verifica_sha256(const Manifest *m, const char *cale_cpm) {
+    if (m->sha256[0] == '\0') return 0;  /* fara hash, nu verificam */
+    char obtinut[MAX_SHA256];
+    if (sha256_file(cale_cpm, obtinut) < 0) {
+        cpm_err("sha256: nu pot citi %s", cale_cpm);
+        return -1;
+    }
+    if (strcmp(obtinut, m->sha256) != 0) {
+        cpm_err("sha256 nu corespunde pentru %s:", m->fisier);
+        cpm_err("  asteptat: %s", m->sha256);
+        cpm_err("  obtinut:  %s", obtinut);
+        return -1;
+    }
+    return 0;
+}
+
 static int instaleaza_din_repo(const Manifest *m) {
     char cale_cpm[MAX_CALE + 64];
-    if ((size_t)snprintf(cale_cpm, sizeof(cale_cpm), "%s/%s",
-                          DIR_REPO, m->fisier) >= sizeof(cale_cpm)) return -1;
+    if (gaseste_sau_descarca(m, cale_cpm, sizeof(cale_cpm)) < 0) return -1;
+    if (verifica_sha256(m, cale_cpm) < 0) return -1;
     cpm_info("Instalez %s-%s", m->nume, m->versiune);
-    return extrage_si_inregistreaza(m, cale_cpm, "/");
+    return extrage_si_inregistreaza(m, cale_cpm, dest_root());
 }
 
 int cmd_install(int argc, char **argv) {
@@ -177,7 +235,7 @@ int cmd_local(int argc, char **argv) {
         if (cpm_incarca(argv[i], &m, &payload, &plen) < 0) return 1;
         free(payload);  /* eliberam — vom reciti in extrage_si_inregistreaza */
         cpm_info("Instalez %s-%s (din %s)", m.nume, m.versiune, argv[i]);
-        if (extrage_si_inregistreaza(&m, argv[i], "/") < 0) return 1;
+        if (extrage_si_inregistreaza(&m, argv[i], dest_root()) < 0) return 1;
     }
     return 0;
 }

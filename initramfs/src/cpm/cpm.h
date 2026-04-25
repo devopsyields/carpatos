@@ -35,6 +35,7 @@ extern char DIR_INSTALLED[MAX_CALE];
 extern char DIR_CACHE[MAX_CALE];
 extern char DIR_REPO[MAX_CALE];
 extern char FILE_REPO_INDEX[MAX_CALE];
+extern char FILE_REPO_URL[MAX_CALE];
 
 void cpm_init_paths(void);
 
@@ -68,6 +69,10 @@ void manifest_afiseaza(const Manifest *m);
 /* ===== sha256 ===== */
 void sha256_buf(const void *data, size_t len, char out_hex[65]);
 int  sha256_file(const char *cale, char out_hex[65]);
+
+/* ===== http (wrapper peste binarul curl) ===== */
+int  http_descarca(const char *url, const char *cale_dest);
+int  cpm_repo_url(char *out, size_t cap);
 
 /* ===== tar USTAR ===== */
 int  tar_extrage(const void *buf, size_t len, const char *dest_dir,

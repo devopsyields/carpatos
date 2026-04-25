@@ -17,7 +17,7 @@ CFLAGS   := -std=c11 -Wall -Wextra -Werror -O2 \
 LDFLAGS  ?= -static -no-pie -s
 
 TARGET   := cpm
-SOURCES  := util.c manifest.c tar.c pkg.c db.c repo.c sha256.c \
+SOURCES  := util.c manifest.c tar.c pkg.c db.c repo.c sha256.c http.c \
             cmd_install.c cmd_remove.c cmd_query.c cmd_build.c main.c
 OBJECTS  := $(SOURCES:.c=.o)
 

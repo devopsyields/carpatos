@@ -19,6 +19,7 @@ char DIR_INSTALLED[MAX_CALE];
 char DIR_CACHE[MAX_CALE];
 char DIR_REPO[MAX_CALE];
 char FILE_REPO_INDEX[MAX_CALE];
+char FILE_REPO_URL[MAX_CALE];
 
 void cpm_init_paths(void) {
     const char *root = getenv("CPM_ROOT");
@@ -35,6 +36,7 @@ void cpm_init_paths(void) {
     snprintf(DIR_CACHE,       sizeof(DIR_CACHE),       "%s/var/cpm/cache", r);
     snprintf(DIR_REPO,        sizeof(DIR_REPO),        "%s/var/cpm/repos/carpatos-core", r);
     snprintf(FILE_REPO_INDEX, sizeof(FILE_REPO_INDEX), "%s/var/cpm/db/repo.index", r);
+    snprintf(FILE_REPO_URL,   sizeof(FILE_REPO_URL),   "%s/etc/cpm/repo.url", r);
 }
 
 static int debug_activ(void) {
