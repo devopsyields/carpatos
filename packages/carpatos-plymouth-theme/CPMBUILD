@@ -1,0 +1,9 @@
+# CPMBUILD — carpatos-plymouth-theme
+# Tema Plymouth pentru boot splash CarpatOS. Foloseste ModuleName=script
+# fara imagini PNG — doar gradient + text + indicator progres simplu.
+# Selectata ca default cu plymouth-set-default-theme la ISO build.
+nume=carpatos-plymouth-theme
+versiune=1.0
+arhitectura=any
+descriere=Tema Plymouth (boot splash) CarpatOS
+depinde=

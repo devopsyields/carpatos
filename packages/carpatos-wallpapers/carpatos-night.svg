@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- carpatos-night.svg — wallpaper noapte: cer instelat peste Carpati -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 2160" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="cer-noapte" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"    stop-color="#0a0e1a"/>
+      <stop offset="0.6"  stop-color="#1a2845"/>
+      <stop offset="1"    stop-color="#2a3a5e"/>
+    </linearGradient>
+    <radialGradient id="luna-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0"   stop-color="#fff8e1" stop-opacity="0.5"/>
+      <stop offset="1"   stop-color="#fff8e1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="3840" height="2160" fill="url(#cer-noapte)"/>
+
+  <!-- Luna -->
+  <circle cx="3100" cy="450" r="320" fill="url(#luna-glow)"/>
+  <circle cx="3100" cy="450" r="100" fill="#f5e6c8"/>
+  <circle cx="3070" cy="430" r="100" fill="#1a2845"/>
+
+  <!-- Stele aleatorii (predeterminat aici, simplificat) -->
+  <g fill="#f5e6c8">
+    <circle cx="200"  cy="180"  r="2"/>  <circle cx="450"  cy="320"  r="1.5"/>
+    <circle cx="780"  cy="150"  r="2.5"/><circle cx="1020" cy="280"  r="1"/>
+    <circle cx="1320" cy="200"  r="2"/>  <circle cx="1580" cy="380"  r="1.5"/>
+    <circle cx="1850" cy="120"  r="2"/>  <circle cx="2150" cy="340"  r="1"/>
+    <circle cx="2400" cy="220"  r="2.5"/><circle cx="2680" cy="160"  r="1.5"/>
+    <circle cx="180"  cy="540"  r="1"/>  <circle cx="540"  cy="680"  r="2"/>
+    <circle cx="940"  cy="600"  r="1.5"/><circle cx="1280" cy="720"  r="1"/>
+    <circle cx="1680" cy="640"  r="2"/>  <circle cx="2080" cy="700"  r="1.5"/>
+    <circle cx="2480" cy="580"  r="1"/>  <circle cx="3500" cy="780"  r="2"/>
+    <circle cx="3700" cy="320"  r="1.5"/><circle cx="3300" cy="980"  r="1"/>
+    <circle cx="100"  cy="900"  r="1.5"/><circle cx="650"  cy="1020" r="1"/>
+    <circle cx="1100" cy="940"  r="2"/>  <circle cx="1500" cy="1100" r="1"/>
+    <circle cx="1900" cy="980"  r="1.5"/><circle cx="2300" cy="1080" r="1"/>
+    <circle cx="2750" cy="940"  r="2"/>  <circle cx="3150" cy="1100" r="1"/>
+  </g>
+
+  <!-- Munte fundal -->
+  <path fill="#1c2a42" d="
+    M0,1380 L280,1240 L540,1320 L820,1180 L1120,1300 L1420,1200
+    L1740,1340 L2060,1180 L2380,1300 L2720,1180 L3040,1280
+    L3360,1180 L3640,1280 L3840,1220 L3840,2160 L0,2160 Z"/>
+
+  <!-- Munte mijloc -->
+  <path fill="#101828" d="
+    M0,1580 L260,1440 L520,1540 L800,1380 L1120,1540 L1400,1420
+    L1720,1560 L2040,1400 L2360,1560 L2680,1440 L3020,1580
+    L3340,1440 L3680,1560 L3840,1480 L3840,2160 L0,2160 Z"/>
+
+  <!-- Munte fata -->
+  <path fill="#070b14" d="
+    M0,1820 L320,1680 L640,1800 L960,1640 L1280,1780 L1620,1660
+    L1960,1820 L2280,1700 L2620,1820 L2940,1700 L3260,1820
+    L3580,1700 L3840,1820 L3840,2160 L0,2160 Z"/>
+
+  <text x="120" y="2070" font-family="DejaVu Sans, sans-serif" font-size="64"
+        font-weight="300" fill="#f5e6d3" opacity="0.45"
+        letter-spacing="6">CarpatOS</text>
+</svg>

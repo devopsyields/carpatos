@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- carpatos-default.svg — wallpaper default CarpatOS
+     Stilizare Carpati: cer in apus + 3 randuri de munti -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3840 2160" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="cer" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"    stop-color="#1c2a4a"/>
+      <stop offset="0.45" stop-color="#3d5478"/>
+      <stop offset="0.75" stop-color="#c98e5c"/>
+      <stop offset="1"    stop-color="#d4a04a"/>
+    </linearGradient>
+    <linearGradient id="munte-fundal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a4a66"/>
+      <stop offset="1" stop-color="#2c3a52"/>
+    </linearGradient>
+    <linearGradient id="munte-mijloc" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3548"/>
+      <stop offset="1" stop-color="#1c2638"/>
+    </linearGradient>
+    <linearGradient id="munte-fata" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16202e"/>
+      <stop offset="1" stop-color="#0c121c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Cer cu gradient apus -->
+  <rect x="0" y="0" width="3840" height="2160" fill="url(#cer)"/>
+
+  <!-- Soare in spate, cu glow -->
+  <circle cx="2880" cy="1380" r="180" fill="#f5d9a8" opacity="0.95"/>
+  <circle cx="2880" cy="1380" r="280" fill="#f5d9a8" opacity="0.25"/>
+
+  <!-- Munte fundal (cel mai indepartat, cel mai luminos) -->
+  <path fill="url(#munte-fundal)" d="
+    M0,1450 L260,1290 L520,1380 L780,1180 L1080,1320 L1380,1240
+    L1680,1380 L2020,1180 L2340,1320 L2660,1180 L3000,1280
+    L3300,1180 L3580,1300 L3840,1240 L3840,2160 L0,2160 Z"/>
+
+  <!-- Munte mijloc -->
+  <path fill="url(#munte-mijloc)" d="
+    M0,1620 L240,1480 L500,1580 L760,1420 L1080,1560 L1340,1460
+    L1660,1600 L1960,1440 L2280,1580 L2580,1480 L2900,1620
+    L3220,1480 L3540,1600 L3840,1500 L3840,2160 L0,2160 Z"/>
+
+  <!-- Munte fata (cel mai apropiat, cel mai inchis) -->
+  <path fill="url(#munte-fata)" d="
+    M0,1820 L300,1680 L600,1780 L920,1640 L1240,1780 L1560,1660
+    L1880,1820 L2200,1700 L2520,1820 L2840,1700 L3160,1820
+    L3480,1700 L3840,1820 L3840,2160 L0,2160 Z"/>
+
+  <!-- Wordmark CarpatOS subtil in coltul jos-stanga -->
+  <text x="120" y="2070" font-family="DejaVu Sans, sans-serif" font-size="64"
+        font-weight="300" fill="#f5e6d3" opacity="0.55"
+        letter-spacing="6">CarpatOS</text>
+</svg>

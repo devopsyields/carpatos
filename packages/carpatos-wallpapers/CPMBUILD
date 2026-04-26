@@ -1,0 +1,8 @@
+# CPMBUILD — carpatos-wallpapers
+# Wallpaper-uri proprii CarpatOS in /usr/share/backgrounds/carpatos/.
+# Configurarea ca default in GNOME se face de carpatos-gnome-defaults.
+nume=carpatos-wallpapers
+versiune=1.0
+arhitectura=any
+descriere=Wallpaper-uri CarpatOS (SVG, scalabile)
+depinde=

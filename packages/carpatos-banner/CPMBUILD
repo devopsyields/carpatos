@@ -1,0 +1,8 @@
+# CPMBUILD — carpatos-banner
+# Suprascrie /etc/issue, /etc/issue.net si /etc/motd cu un banner ASCII
+# CarpatOS afisat la login pe TTY si in shell.
+nume=carpatos-banner
+versiune=1.0
+arhitectura=any
+descriere=Banner ASCII CarpatOS pentru issue si motd
+depinde=

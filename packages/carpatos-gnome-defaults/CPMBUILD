@@ -1,0 +1,9 @@
+# CPMBUILD — carpatos-gnome-defaults
+# gschema overrides pentru a seta wallpaper-ul CarpatOS, accent-ul,
+# si dock-ul implicit. Necesita rularea glib-compile-schemas dupa
+# instalare (se face la ISO build).
+nume=carpatos-gnome-defaults
+versiune=1.0
+arhitectura=any
+descriere=Setari implicite GNOME pentru CarpatOS (wallpaper, dock, accent)
+depinde=carpatos-wallpapers

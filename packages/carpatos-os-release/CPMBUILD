@@ -1,0 +1,8 @@
+# CPMBUILD — carpatos-os-release
+# Suprascrie /etc/os-release si /etc/lsb-release de la base-files (Ubuntu)
+# cu identitatea CarpatOS. Trebuie instalat dupa base-files.
+nume=carpatos-os-release
+versiune=1.0
+arhitectura=any
+descriere=Identitate sistem CarpatOS (os-release, lsb-release)
+depinde=
