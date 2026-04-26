@@ -40,7 +40,7 @@ DEFAULT_ARH_DEB = "arm64"          # cpm: aarch64
 DEFAULT_COMPONENTS = ["main"]
 DEFAULT_USER_AGENT = "build-cpm-repo/0.1"
 
-# Lista esentiala default (din CLAUDE.md). Se poate suprascrie cu argv
+# Lista esentiala default. Se poate suprascrie cu argv
 # sau cu --seed-file.
 SEED_DEFAULT = [
     "bash", "coreutils", "grep", "sed", "gawk", "findutils",

@@ -42,3 +42,9 @@ alpine-based/carpatos-*.iso
 alpine-based/carpatos.apkovl.tar.gz
 alpine-based/apkovl/usr/local/bin/cpm
 alpine-based/apkovl/var/cpm/
+
+# Documente interne (instructiuni Claude Code, onboarding, roadmap personal)
+CLAUDE.md
+PROMPT-CLAUDE-CODE.md
+ROADMAP-CARPATOS.md
+.claude/
