@@ -127,6 +127,23 @@ def construieste_index(release: str, components: list[str], arh: str,
     return index
 
 
+def construieste_provides(index: dict[str, dict[str, str]]) -> dict[str, list[str]]:
+    """Mapa nume_virtual -> [pachete care il furnizeaza].
+
+    Format Debian Provides:
+      Provides: pkg-virtual1, pkg-virtual2 (= 1.0)
+    Stripeaza version constraints. Pachete reale sunt mereu cuprinse in
+    propriul nume (un pkg `bash` Provides-uieste implicit `bash`)."""
+    provides: dict[str, list[str]] = {}
+    for nume, camp in index.items():
+        prov_raw = camp.get("Provides", "")
+        if not prov_raw.strip():
+            continue
+        for v in parseaza_deps(prov_raw):  # stripeaza (= 1.0) etc.
+            provides.setdefault(v, []).append(nume)
+    return provides
+
+
 # -------- Deps resolver --------
 
 def parseaza_deps(raw: str) -> list[str]:
@@ -144,9 +161,14 @@ def parseaza_deps(raw: str) -> list[str]:
 
 
 def colecteaza_deps(seeds: list[str],
-                    index: dict[str, dict[str, str]]
+                    index: dict[str, dict[str, str]],
+                    provides: dict[str, list[str]] | None = None,
                     ) -> tuple[set[str], set[str]]:
-    """BFS. Returneaza (gasite, lipsa)."""
+    """BFS. Cand un dep nu e in index, incercam sa-l rezolvam ca virtual
+    via map-ul Provides (preferand primul provider in ordine alfabetica
+    pentru determinism). Returneaza (gasite, lipsa)."""
+    if provides is None:
+        provides = {}
     gasite: set[str] = set()
     lipsa: set[str] = set()
     coada = list(seeds)
@@ -155,6 +177,13 @@ def colecteaza_deps(seeds: list[str],
         if nume in gasite or nume in lipsa:
             continue
         if nume not in index:
+            # Incearca rezolvare ca virtual prin Provides
+            cand = provides.get(nume)
+            if cand:
+                ales = sorted(cand)[0]  # determinism
+                if ales not in gasite and ales not in lipsa:
+                    coada.append(ales)
+                continue
             lipsa.add(nume)
             continue
         gasite.add(nume)
@@ -201,14 +230,44 @@ def descarca_deb(camp: dict[str, str], cache_dir: Path) -> Path:
 
 # -------- Repo writing --------
 
-def serializeaza_intrare_index(nume_pkg: str, m: dict[str, str], cale_cpm: Path) -> str:
-    """O linie repo.index din manifest (deja calculat de deb2cpm)."""
+def deps_concrete(nume: str,
+                  index: dict[str, dict[str, str]],
+                  provides: dict[str, list[str]],
+                  gasite: set[str]) -> list[str]:
+    """Pentru `nume`, returneaza lista de deps direct (Pre-Depends + Depends)
+    cu virtualele inlocuite cu pachetul concret ales (cel din `gasite`).
+
+    Daca un virtual are mai multi candidati, ales = primul (alfabetic) care
+    e in `gasite`. Daca nimic nu match-ueste, dep-ul e omis."""
+    if nume not in index:
+        return []
+    camp = index[nume]
+    deps_brut = ", ".join(
+        x for x in (camp.get("Pre-Depends", ""), camp.get("Depends", ""))
+        if x.strip()
+    )
+    rezultat: list[str] = []
+    for d in parseaza_deps(deps_brut):
+        if d in gasite:
+            rezultat.append(d)
+        elif d in provides:
+            for c in sorted(provides[d]):
+                if c in gasite:
+                    rezultat.append(c)
+                    break
+    return rezultat
+
+
+def serializeaza_intrare_index(nume_pkg: str, m: dict[str, str],
+                                cale_cpm: Path,
+                                deps_override: list[str] | None = None) -> str:
+    """O linie repo.index. Daca deps_override e dat, foloseste-l in locul
+    lui m['depinde'] (dupa rezolvarea virtualelor)."""
     h = hashlib.sha256(cale_cpm.read_bytes()).hexdigest()
-    # `m` aici este deja in format cpm (dict din deb2cpm.serializeaza_manifest).
-    # Re-citim manifestul din .cpm pentru consistenta cu ce a scris deb2cpm.
+    dep = ",".join(deps_override) if deps_override is not None else m["depinde"]
     return "{nume}|{ver}|{arh}|{desc}|{dep}|{file}|{sha}\n".format(
         nume=m["nume"], ver=m["versiune"], arh=m["arhitectura"],
-        desc=m["descriere"], dep=m["depinde"], file=cale_cpm.name, sha=h,
+        desc=m["descriere"], dep=dep, file=cale_cpm.name, sha=h,
     )
 
 
@@ -265,9 +324,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[info] seed: {len(seeds)} pachete", file=sys.stderr)
     components = [c.strip() for c in args.components.split(",") if c.strip()]
     index = construieste_index(args.release, components, args.arh_deb, cache_dir)
-    print(f"[info] index: {len(index)} pachete in {components}", file=sys.stderr)
+    provides = construieste_provides(index)
+    print(f"[info] index: {len(index)} pachete in {components}, "
+          f"{len(provides)} nume virtuale", file=sys.stderr)
 
-    gasite, lipsa = colecteaza_deps(seeds, index)
+    gasite, lipsa = colecteaza_deps(seeds, index, provides)
     print(f"[info] dupa BFS: {len(gasite)} pachete necesare", file=sys.stderr)
     if lipsa:
         print(f"[warn] {len(lipsa)} lipsa din index (provides/virtual?):",
@@ -289,7 +350,10 @@ def main(argv: list[str] | None = None) -> int:
             if not cale_cpm.exists():
                 converteste_deb(cale_deb, cale_cpm)
             m = citeste_manifest_din_cpm(cale_cpm)
-            intrari_idx.append(serializeaza_intrare_index(nume, m, cale_cpm))
+            # Rescriem deps-urile cu cele concrete (virtuale rezolvate),
+            # ca cpm install sa le poata trata fara cunostinte de Provides.
+            deps = deps_concrete(nume, index, provides, gasite)
+            intrari_idx.append(serializeaza_intrare_index(nume, m, cale_cpm, deps))
             if args.verbose:
                 print(f"[{i}/{len(pachete_sortate)}] OK {nume} -> {cale_cpm.name}",
                       file=sys.stderr)
