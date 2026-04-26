@@ -51,6 +51,9 @@ CARPATOS_PACKAGES=(
     carpatos-gdm-theme
 )
 
+# Setat de need_sudo() la "sudo" sau "" (cand ruleaza ca root).
+SUDO="sudo"
+
 # ---- helpers ----
 info()  { printf "\033[1;36m[info]\033[0m %s\n" "$*" >&2; }
 warn()  { printf "\033[1;33m[warn]\033[0m %s\n" "$*" >&2; }
@@ -61,8 +64,12 @@ need() {
 }
 
 need_sudo() {
-    if [ "$(id -u)" -ne 0 ] && ! sudo -n true 2>/dev/null; then
-        fatal "scriptul are nevoie de sudo (extragere/repacking squashfs)"
+    if [ "$(id -u)" -eq 0 ]; then
+        SUDO=""
+    elif $SUDO -n true 2>/dev/null; then
+        SUDO="sudo"
+    else
+        fatal "scriptul are nevoie de $SUDO (sau ruleaza ca root)"
     fi
 }
 
@@ -120,12 +127,12 @@ gaseste_squashfs() {
 extrage_rootfs() {
     local sqfs="$1"
     local rootfs="$WORK/rootfs"
-    if [ -d "$rootfs" ] && [ -n "$(sudo ls -A "$rootfs" 2>/dev/null)" ]; then
+    if [ -d "$rootfs" ] && [ -n "$($SUDO ls -A "$rootfs" 2>/dev/null)" ]; then
         info "[3/8] rootfs deja extras la $rootfs (reuse)"
     else
         info "[3/8] Unsquashfs $(basename "$sqfs") -> $rootfs"
-        sudo rm -rf "$rootfs"
-        sudo unsquashfs -d "$rootfs" "$sqfs" >/dev/null
+        $SUDO rm -rf "$rootfs"
+        $SUDO unsquashfs -d "$rootfs" "$sqfs" >/dev/null
     fi
     echo "$rootfs"
 }
@@ -150,16 +157,16 @@ aplica_overlay() {
     info "[5/8] Aplic pachete carpatos-* peste rootfs"
     for pkg in "${CARPATOS_PACKAGES[@]}"; do
         info "  install $pkg"
-        sudo CPM_ROOT="$rootfs" "$CPM_HOST" local "$PKG_BUILD/${pkg}.cpm" \
+        $SUDO CPM_ROOT="$rootfs" "$CPM_HOST" local "$PKG_BUILD/${pkg}.cpm" \
             2>&1 | grep -v "^Instalez " || true
     done
 
     info "  scriu /etc/cpm/repo.url -> $CPM_REPO_URL"
-    sudo install -d "$rootfs/etc/cpm"
-    echo "$CPM_REPO_URL" | sudo tee "$rootfs/etc/cpm/repo.url" >/dev/null
+    $SUDO install -d "$rootfs/etc/cpm"
+    echo "$CPM_REPO_URL" | $SUDO tee "$rootfs/etc/cpm/repo.url" >/dev/null
 
     info "  instalez binarul cpm la /usr/local/bin/cpm"
-    sudo install -m 0755 "$CPM_HOST" "$rootfs/usr/local/bin/cpm"
+    $SUDO install -m 0755 "$CPM_HOST" "$rootfs/usr/local/bin/cpm"
 }
 
 # ---- 7. ruleaza hooks finale in chroot ----
@@ -169,20 +176,20 @@ ruleaza_hooks() {
 
     # Mount-uri necesare pentru chroot
     for m in proc sys dev dev/pts; do
-        sudo mkdir -p "$rootfs/$m"
+        $SUDO mkdir -p "$rootfs/$m"
     done
-    sudo mount -t proc  proc      "$rootfs/proc"
-    sudo mount -t sysfs sysfs     "$rootfs/sys"
-    sudo mount --bind   /dev      "$rootfs/dev"
-    sudo mount --bind   /dev/pts  "$rootfs/dev/pts"
+    $SUDO mount -t proc  proc      "$rootfs/proc"
+    $SUDO mount -t sysfs sysfs     "$rootfs/sys"
+    $SUDO mount --bind   /dev      "$rootfs/dev"
+    $SUDO mount --bind   /dev/pts  "$rootfs/dev/pts"
     trap "
-        sudo umount -lf '$rootfs/dev/pts' 2>/dev/null || true
-        sudo umount -lf '$rootfs/dev'     2>/dev/null || true
-        sudo umount -lf '$rootfs/sys'     2>/dev/null || true
-        sudo umount -lf '$rootfs/proc'    2>/dev/null || true
+        $SUDO umount -lf '$rootfs/dev/pts' 2>/dev/null || true
+        $SUDO umount -lf '$rootfs/dev'     2>/dev/null || true
+        $SUDO umount -lf '$rootfs/sys'     2>/dev/null || true
+        $SUDO umount -lf '$rootfs/proc'    2>/dev/null || true
     " EXIT
 
-    sudo chroot "$rootfs" /bin/bash -eu <<'CHROOT_EOF'
+    $SUDO chroot "$rootfs" /bin/bash -eu <<'CHROOT_EOF'
         export DEBIAN_FRONTEND=noninteractive
 
         echo "[chroot] glib-compile-schemas"
@@ -211,10 +218,10 @@ ruleaza_hooks() {
         echo "[chroot] terminat"
 CHROOT_EOF
 
-    sudo umount -lf "$rootfs/dev/pts" || true
-    sudo umount -lf "$rootfs/dev"     || true
-    sudo umount -lf "$rootfs/sys"     || true
-    sudo umount -lf "$rootfs/proc"    || true
+    $SUDO umount -lf "$rootfs/dev/pts" || true
+    $SUDO umount -lf "$rootfs/dev"     || true
+    $SUDO umount -lf "$rootfs/sys"     || true
+    $SUDO umount -lf "$rootfs/proc"    || true
     trap - EXIT
 }
 
@@ -223,8 +230,8 @@ repack_squashfs() {
     local sqfs="$1"
     local rootfs="$2"
     info "[7/8] Repac squashfs (xz, poate dura cateva minute)"
-    sudo rm -f "$sqfs"
-    sudo mksquashfs "$rootfs" "$sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
+    $SUDO rm -f "$sqfs"
+    $SUDO mksquashfs "$rootfs" "$sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
 }
 
 regenereaza_checksums() {
@@ -232,8 +239,8 @@ regenereaza_checksums() {
     info "  regenerez md5sum.txt"
     (
         cd "$extract"
-        sudo find . -type f ! -name md5sum.txt ! -path './isolinux/*' \
-            -exec md5sum {} + | sudo tee md5sum.txt >/dev/null
+        $SUDO find . -type f ! -name md5sum.txt ! -path './isolinux/*' \
+            -exec md5sum {} + | $SUDO tee md5sum.txt >/dev/null
     )
 }
 
@@ -250,7 +257,7 @@ construieste_iso() {
     fi
     [ -f "$efi_img" ] || fatal "nu gasesc efi.img in ISO extras"
 
-    sudo xorriso -as mkisofs \
+    $SUDO xorriso -as mkisofs \
         -V "$CARPATOS_VOLID" \
         -o "$OUT" \
         -J -joliet-long -r \
@@ -259,7 +266,7 @@ construieste_iso() {
         -partition_cyl_align all \
         "$extract" 2>&1 | tail -5
 
-    sudo chown "$(id -u):$(id -g)" "$OUT"
+    $SUDO chown "$(id -u):$(id -g)" "$OUT"
     info "ISO gata: $OUT ($(du -h "$OUT" | cut -f1))"
 }
 

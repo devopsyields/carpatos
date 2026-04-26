@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         # ISO creation
         xorriso \
         mtools \
+        squashfs-tools \
         # GPT disk creation (pentru .img raw cu ESP)
         gdisk \
         dosfstools \
