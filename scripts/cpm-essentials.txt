@@ -1,0 +1,22 @@
+# Lista de pachete seed pentru build-cpm-repo.
+#
+# Acestea sunt punctul de pornire al BFS — toate dependentele transitive
+# se trag automat. Pentru CarpatOS Desktop, baza e meta-pachetul
+# ubuntu-desktop-minimal (GNOME minimal: shell, gdm3, mutter, nautilus,
+# gnome-terminal, firefox etc.). Pe deasupra punem branding-ul propriu
+# CarpatOS prin pachete .cpm separate (carpatos-wallpapers etc.).
+#
+# Linii ce incep cu # sau care sunt goale = ignorate.
+
+# Baza tehnica desktop (~1500 pachete cu deps)
+ubuntu-desktop-minimal
+
+# Tools de dezvoltare ce nu sunt in desktop-minimal
+git
+gcc
+make
+build-essential
+vim-tiny
+htop
+curl
+python3-pip
