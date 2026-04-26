@@ -228,6 +228,17 @@ def descarca_deb(camp: dict[str, str], cache_dir: Path) -> Path:
     return cache
 
 
+# -------- Filename sanitization --------
+
+# GitHub Releases inlocuieste tildele si alte caractere ne-standard din
+# asset names cu '.'. Sanitizam noi filename-ul .cpm la generare ca
+# m["fisier"] din repo.index sa pointeze la fisierul real de pe GitHub.
+_FILENAME_SAFE = re.compile(r"[^a-zA-Z0-9._+-]")
+
+def sanitize_filename(nume: str) -> str:
+    return _FILENAME_SAFE.sub(".", nume)
+
+
 # -------- Repo writing --------
 
 def deps_concrete(nume: str,
@@ -346,7 +357,7 @@ def main(argv: list[str] | None = None) -> int:
     for i, nume in enumerate(pachete_sortate, 1):
         try:
             cale_deb = descarca_deb(index[nume], cache_dir)
-            cale_cpm = pool_dir / f"{cale_deb.stem}.cpm"
+            cale_cpm = pool_dir / sanitize_filename(f"{cale_deb.stem}.cpm")
             if not cale_cpm.exists():
                 converteste_deb(cale_deb, cale_cpm)
             m = citeste_manifest_din_cpm(cale_cpm)
