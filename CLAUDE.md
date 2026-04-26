@@ -13,13 +13,27 @@ aarch64**. Identitatea CarpatOS sta in:
 - Repo propriu `.cpm` care serveste ca primary package manager
 - `apt` ramane in sistem ca backend de fallback si pentru dependente deb
 
-## Starea actuala (2026-04-24)
+## Starea actuala (2026-04-26)
 
 Abordarea "OS from-scratch" (kernel custom + init.c + msh shell) a fost
-abandonata. Inainte eram pe pivot Alpine-based; acum schimbam din nou la
-Ubuntu Desktop — mai robust, userland complet, apt pentru backend.
+abandonata. Inainte eram pe pivot Alpine-based; acum sunt pe Ubuntu Desktop
+24.04 LTS arm64 ca baza tehnica + overlay CarpatOS deasupra.
 
-**Munca curenta** (Faza 4 din plan): convertor `deb2cpm` + repo propriu.
+**Faza 4 — DONE (2026-04-25)**: deb2cpm + build-cpm-repo + cpm HTTP +
+GitHub Actions. Vezi `scripts/deb2cpm.py`, `scripts/build-cpm-repo.py`,
+`initramfs/src/cpm/{http,sha256}.c`, `.github/workflows/` in carpatos-repo.
+
+**Faza 5 — in curs (2026-04-26)**: branding + ISO CarpatOS Desktop.
+- ✓ 6 pachete `packages/carpatos-*` (os-release, banner, wallpapers cu
+  SVG-uri proprii + logo, gnome-defaults gschema overrides, plymouth-theme,
+  gdm-theme)
+- ✓ `scripts/build-iso-carpatos.sh` (Ubuntu Desktop ISO -> CarpatOS ISO)
+  — neconfirmat la rulare (necesita Linux arm64 + sudo)
+- ⏭ Workflow GitHub Actions pentru build ISO automat (runner arm64)
+
+**Repo distributie**: https://github.com/devopsyields/carpatos-repo
+- Tag `v0.2-essentials`: ubuntu-desktop-minimal + tools dev = ~850 pachete
+- Tag `latest-weekly`: rebuild Sambata 04:00 UTC (cron in workflow)
 
 ## Comunicare cu user
 
