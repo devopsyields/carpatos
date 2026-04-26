@@ -1,0 +1,9 @@
+# CPMBUILD — carpatos-gdm-theme
+# Customizare GDM (login screen) cu wallpaper si culori CarpatOS.
+# Foloseste dconf db /etc/dconf/db/gdm.d/. Necesita `dconf update`
+# rulat la ISO build.
+nume=carpatos-gdm-theme
+versiune=1.0
+arhitectura=any
+descriere=Branding GDM (login screen) pentru CarpatOS
+depinde=carpatos-wallpapers

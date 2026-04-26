@@ -48,6 +48,7 @@ CARPATOS_PACKAGES=(
     carpatos-wallpapers
     carpatos-gnome-defaults
     carpatos-plymouth-theme
+    carpatos-gdm-theme
 )
 
 # ---- helpers ----
@@ -187,6 +188,11 @@ ruleaza_hooks() {
         echo "[chroot] glib-compile-schemas"
         if [ -d /usr/share/glib-2.0/schemas ]; then
             glib-compile-schemas /usr/share/glib-2.0/schemas/ || true
+        fi
+
+        echo "[chroot] dconf update (compileaza GDM greeter dconf db)"
+        if command -v dconf >/dev/null && [ -d /etc/dconf/db ]; then
+            dconf update || true
         fi
 
         echo "[chroot] plymouth-set-default-theme carpatos"
