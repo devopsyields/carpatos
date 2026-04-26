@@ -25,7 +25,7 @@
 set -euo pipefail
 
 # ---- config ----
-UBUNTU_RELEASE="${UBUNTU_RELEASE:-24.04.3}"
+UBUNTU_RELEASE="${UBUNTU_RELEASE:-24.04.4}"
 UBUNTU_ARH="${UBUNTU_ARH:-arm64}"
 UBUNTU_ISO_URL="${UBUNTU_ISO_URL:-https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-${UBUNTU_RELEASE}-desktop-${UBUNTU_ARH}.iso}"
 
