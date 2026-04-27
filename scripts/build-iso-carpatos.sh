@@ -170,7 +170,10 @@ aplica_overlay() {
     info "[5/8] Aplic pachete carpatos-* peste rootfs"
     for pkg in "${CARPATOS_PACKAGES[@]}"; do
         info "  install $pkg"
-        $SUDO CPM_ROOT="$rootfs" "$CPM_HOST" local "$PKG_BUILD/${pkg}.cpm" \
+        # Folosim `env VAR=val cmd` in loc de `VAR=val cmd` pentru ca
+        # daca $SUDO e gol, bash incearca sa execute "VAR=val" ca o
+        # comanda. `env` lucreaza mereu corect.
+        $SUDO env CPM_ROOT="$rootfs" "$CPM_HOST" local "$PKG_BUILD/${pkg}.cpm" \
             2>&1 | grep -v "^Instalez " || true
     done
 
@@ -259,40 +262,23 @@ regenereaza_checksums() {
 
 construieste_iso() {
     local extract="$1"
+    local orig_iso="$2"
     info "[8/8] Construiesc ISO final -> $OUT"
 
-    # Pentru arm64 doar UEFI. Cautam efi.img in locatia standard Ubuntu.
-    local efi_rel=""
-    for cand in boot/grub/efi.img EFI/boot/efi.img boot.img; do
-        if [ -f "$extract/$cand" ]; then
-            efi_rel="$cand"
-            break
-        fi
-    done
-    if [ -z "$efi_rel" ]; then
-        # fallback: cautare recursiva
-        local found
-        found="$(cd "$extract" && find . -type f -name 'efi.img' | head -1)"
-        efi_rel="${found#./}"
-    fi
-    [ -n "$efi_rel" ] && [ -f "$extract/$efi_rel" ] || fatal "nu gasesc efi.img in ISO extras"
-    info "  efi image: $efi_rel"
+    # Ubuntu 24.04 arm64 ISO are El Torito EFI boot image hidden (la
+    # un LBA specific, nu fisier in arborele filesystem). Folosim modul
+    # de "clonare" xorriso: -indev orig + -outdev new + replay boot info
+    # + -update_r pentru a inlocui arborele cu cel modificat.
+    $SUDO rm -f "$OUT"
+    $SUDO xorriso \
+        -indev "$orig_iso" \
+        -outdev "$OUT" \
+        -boot_image any replay \
+        -volid "$CARPATOS_VOLID" \
+        -update_r "$extract" / \
+        2>&1 | tail -10
 
-    # Pattern Ubuntu live arm64 — partition 2 EF (EFI System) appended,
-    # boot via -e cu interval pe partition 2.
-    $SUDO xorriso -as mkisofs \
-        -V "$CARPATOS_VOLID" \
-        -o "$OUT" \
-        -J -joliet-long -r \
-        -iso-level 3 \
-        -partition_offset 16 \
-        --protective-msdos-label \
-        -append_partition 2 0xef "$extract/$efi_rel" \
-        -appended_part_as_gpt \
-        -e '--interval:appended_partition_2:::' -no-emul-boot \
-        "$extract" 2>&1 | tail -10
-
-    $SUDO chown "$(id -u):$(id -g)" "$OUT"
+    $SUDO chown "$(id -u):$(id -g)" "$OUT" 2>/dev/null || true
     info "ISO gata: $OUT ($(du -h "$OUT" | cut -f1))"
 }
 
@@ -307,7 +293,7 @@ aplica_overlay "$ROOTFS"
 ruleaza_hooks "$ROOTFS"
 repack_squashfs "$SQFS" "$ROOTFS"
 regenereaza_checksums "$EXTRACT"
-construieste_iso "$EXTRACT"
+construieste_iso "$EXTRACT" "$ISO"
 
 info "Gata. Testeaza in QEMU/UTM cu:"
 info "  qemu-system-aarch64 -M virt -cpu cortex-a72 -m 4G \\"
