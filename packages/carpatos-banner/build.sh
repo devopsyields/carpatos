@@ -40,3 +40,33 @@ CarpatOS Desktop 1.0
 EOF
 
 chmod 0644 "$DESTDIR/etc/motd" "$DESTDIR/etc/issue" "$DESTDIR/etc/issue.net"
+
+# /etc/legal — Ubuntu pune un text "The programs included with the Ubuntu
+# system are free software; ...". Suprascriem cu un text scurt CarpatOS.
+cat > "$DESTDIR/etc/legal" <<'EOF'
+CarpatOS Desktop — distributie Linux peste Ubuntu LTS.
+Toate pachetele incluse au licente proprii — vezi /usr/share/doc/<pachet>.
+EOF
+chmod 0644 "$DESTDIR/etc/legal"
+
+# /etc/update-motd.d — script-uri executabile rulate la SSH/TTY login.
+# Ubuntu pune aici "Welcome to Ubuntu", "documentation: https://help.ubuntu.com",
+# "esm-apps", "release-upgrade", etc. Le suprascriem cu fisiere goale
+# (fara executable bit) ca sa nu mai ruleze.
+install -d "$DESTDIR/etc/update-motd.d"
+for f in 00-header 10-help-text 50-motd-news 90-updates-available \
+         91-contract-ubuntu-support 91-release-upgrade 95-hwe-eol \
+         98-fsck-at-reboot 98-reboot-required; do
+    install -m 0644 /dev/null "$DESTDIR/etc/update-motd.d/$f"
+done
+
+# Adaug propriul nostru header carpatos (executat la login interactiv)
+cat > "$DESTDIR/etc/update-motd.d/01-carpatos" <<'EOF'
+#!/bin/sh
+# 01-carpatos — header dinamic la login.
+echo
+echo "  CarpatOS Desktop 1.0  ($(uname -m))"
+echo "  https://github.com/devopsyields/carpatos"
+echo
+EOF
+chmod 0755 "$DESTDIR/etc/update-motd.d/01-carpatos"

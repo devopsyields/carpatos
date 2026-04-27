@@ -49,6 +49,7 @@ CARPATOS_PACKAGES=(
     carpatos-gnome-defaults
     carpatos-plymouth-theme
     carpatos-gdm-theme
+    carpatos-installer-rebrand
 )
 
 # Setat de need_sudo() la "sudo" sau "" (cand ruleaza ca root).
@@ -267,6 +268,7 @@ repack_squashfs() {
 # o copie a overlay-ului si recompilam gschemas + dconf.
 patcheaza_live_overlay() {
     local extract="$1"
+    local rootfs="$2"
     local live_sqfs="$extract/casper/minimal.standard.live.squashfs"
     [ -f "$live_sqfs" ] || { info "  fara live overlay, sar peste"; return; }
 
@@ -277,18 +279,60 @@ patcheaza_live_overlay() {
     $SUDO mkdir -p "$(dirname "$live_root")"
     $SUDO unsquashfs -d "$live_root" "$live_sqfs" >/dev/null
 
-    # Live overlay nu are toolchain-ul complet (e doar diff peste base),
-    # deci nu putem rula glib-compile-schemas/dconf in chroot acolo.
-    # Strategia: STERGEM fisierele compilate din live overlay si fortăm
-    # fall-through la cele din base (care au override-urile noastre).
-    info "  sterg gschemas.compiled din live overlay (fall-through la base)"
-    $SUDO rm -f "$live_root/usr/share/glib-2.0/schemas/gschemas.compiled"
-    info "  sterg dconf db compilate din live overlay"
-    $SUDO find "$live_root/etc/dconf/db" -maxdepth 1 -type f -delete 2>/dev/null || true
+    # Aplic carpatos-gnome-defaults + carpatos-gdm-theme in live overlay
+    # ca sa garantez ca override-urile schemei sunt prezente acolo (in
+    # plus fata de ce e in base — overlayfs uneste cele doua).
+    for pkg in carpatos-gnome-defaults carpatos-gdm-theme; do
+        $SUDO env CPM_ROOT="$live_root" "$CPM_HOST" local \
+            "$PKG_BUILD/${pkg}.cpm" >/dev/null 2>&1 || true
+    done
+
+    # Live overlay nu are toolchain (glib-compile-schemas, dconf). Bind-
+    # mount /usr si /lib din base rootfs intr-un punct temporar separat,
+    # apoi exec direct cu PATH/LD_LIBRARY_PATH ajustate pe live_root —
+    # asa scrie gschemas.compiled in live_root/usr/share/glib-2.0/schemas
+    # cu binarele din base, fara sa stricam fisierele live_root.
+    info "  compilez gschemas in live overlay"
+    if [ -d "$live_root/usr/share/glib-2.0/schemas" ]; then
+        $SUDO env LD_LIBRARY_PATH="$rootfs/usr/lib/aarch64-linux-gnu:$rootfs/lib/aarch64-linux-gnu" \
+            "$rootfs/usr/bin/glib-compile-schemas" \
+            "$live_root/usr/share/glib-2.0/schemas/" 2>&1 | head -3 || true
+    fi
+
+    info "  compilez dconf db in live overlay"
+    if [ -d "$live_root/etc/dconf/db" ]; then
+        # dconf update vrea sa scrie /etc/dconf/db/*. Foloseste DCONF_PROFILE
+        # ca sa-l directionez la live_root.
+        for db_dir in "$live_root/etc/dconf/db"/*.d; do
+            [ -d "$db_dir" ] || continue
+            local db_name="${db_dir%.d}"
+            db_name="$(basename "$db_name")"
+            $SUDO env LD_LIBRARY_PATH="$rootfs/usr/lib/aarch64-linux-gnu:$rootfs/lib/aarch64-linux-gnu" \
+                "$rootfs/usr/bin/dconf" compile "$live_root/etc/dconf/db/$db_name" \
+                "$db_dir" 2>&1 | head -3 || true
+        done
+    fi
 
     info "  repack $(basename "$live_sqfs")"
     $SUDO rm -f "$live_sqfs"
     $SUDO mksquashfs "$live_root" "$live_sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
+}
+
+# Plymouth la live boot citeste din /casper/initrd, NU din /boot/initrd.img
+# al rootfs-ului. Copiem initrd-ul din rootfs (care a fost regenerat cu
+# update-initramfs si include theme-ul carpatos) peste casper/initrd.
+update_casper_initrd() {
+    local extract="$1"
+    local rootfs="$2"
+    info "[7c/8] Update casper/initrd cu plymouth carpatos"
+    local initrd_src
+    initrd_src="$($SUDO find "$rootfs/boot" -maxdepth 1 -name 'initrd.img-*' -type f | sort -V | tail -1)"
+    if [ -n "$initrd_src" ] && [ -f "$initrd_src" ]; then
+        $SUDO cp "$initrd_src" "$extract/casper/initrd"
+        info "  copied $(basename "$initrd_src") -> casper/initrd ($(du -h "$extract/casper/initrd" | cut -f1))"
+    else
+        warn "  nu gasesc initrd.img-* in rootfs/boot, casper/initrd ramane original"
+    fi
 }
 
 # Modifica grub.cfg si .disk/info ca sa nu mai zica "Ubuntu" la boot.
@@ -350,7 +394,8 @@ construieste_pachete
 aplica_overlay "$ROOTFS"
 ruleaza_hooks "$ROOTFS"
 repack_squashfs "$SQFS" "$ROOTFS"
-patcheaza_live_overlay "$EXTRACT"
+patcheaza_live_overlay "$EXTRACT" "$ROOTFS"
+update_casper_initrd "$EXTRACT" "$ROOTFS"
 patcheaza_branding_iso "$EXTRACT"
 regenereaza_checksums "$EXTRACT"
 construieste_iso "$EXTRACT" "$ISO"

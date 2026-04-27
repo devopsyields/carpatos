@@ -1,0 +1,10 @@
+# CPMBUILD — carpatos-installer-rebrand
+# Suprascrie .desktop entries + iconite ale installer-ului Ubuntu
+# (ubiquity / install-debian / gnome-initial-setup) cu echivalente
+# CarpatOS. Nu poate ascunde toate stringurile interne ale GUI-ului
+# fara recompilarea pachetelor — minim viable: nume, comentariu, icon.
+nume=carpatos-installer-rebrand
+versiune=1.0
+arhitectura=any
+descriere=Rebrand vizibil installer GUI: .desktop + iconite CarpatOS
+depinde=carpatos-wallpapers
