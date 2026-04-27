@@ -253,13 +253,82 @@ CHROOT_EOF
     trap - EXIT
 }
 
-# ---- 8. repack squashfs + checksums + ISO ----
-repack_squashfs() {
-    local sqfs="$1"
-    local rootfs="$2"
-    info "[7/8] Repac squashfs (xz, poate dura cateva minute)"
-    $SUDO rm -f "$sqfs"
-    $SUDO mksquashfs "$rootfs" "$sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
+# ---- 8. construieste carpatos.squashfs ca strat NOU ----
+# In loc sa modificam minimal.squashfs (care strica boot-ul Ubuntu),
+# pastram TOATE fisierele Ubuntu intacte si cream un strat nou:
+#   /casper/minimal.standard.live.carpatos.squashfs
+# Casper detecteaza chain-ul prin strip-suffix (.carpatos -> .live ->
+# .standard -> minimal). Activam noul lant prin layerfs-path= in grub.
+construieste_carpatos_squashfs() {
+    local extract="$1"
+    local rootfs="$2"  # rootfs-ul cu carpatos installed + hooks rulate
+    info "[7/8] Construiesc carpatos overlay squashfs"
+
+    local overlay="${ROOTFS_DIR%rootfs}carpatos-overlay"
+    [ -n "${ROOTFS_DIR:-}" ] || overlay="$WORK/carpatos-overlay"
+    $SUDO rm -rf "$overlay"
+    $SUDO mkdir -p "$overlay"
+
+    # Instalez pachetele carpatos-* intr-un dir gol (FARA Ubuntu base).
+    # Fisierele rezultate sunt strict carpatos overrides.
+    info "  install pachetele carpatos-* in overlay (fresh dir)"
+    for pkg in "${CARPATOS_PACKAGES[@]}"; do
+        $SUDO env CPM_ROOT="$overlay" "$CPM_HOST" local "$PKG_BUILD/${pkg}.cpm" \
+            >/dev/null 2>&1 || true
+    done
+
+    # Copiez artefactele compilate din rootfs (au fost generate cu chroot
+    # hooks din etapa anterioara, contin overrides carpatos):
+    info "  copiez gschemas.compiled (cu carpatos picture-uri etc.)"
+    if [ -f "$rootfs/usr/share/glib-2.0/schemas/gschemas.compiled" ]; then
+        $SUDO mkdir -p "$overlay/usr/share/glib-2.0/schemas"
+        $SUDO cp "$rootfs/usr/share/glib-2.0/schemas/gschemas.compiled" \
+            "$overlay/usr/share/glib-2.0/schemas/"
+    fi
+    info "  copiez dconf db compilat (gdm cu wallpaper carpatos)"
+    if [ -d "$rootfs/etc/dconf/db" ]; then
+        $SUDO mkdir -p "$overlay/etc/dconf/db"
+        $SUDO cp -a "$rootfs/etc/dconf/db/." "$overlay/etc/dconf/db/" 2>/dev/null || true
+    fi
+    if [ -f "$rootfs/etc/dconf/profile/gdm" ]; then
+        $SUDO mkdir -p "$overlay/etc/dconf/profile"
+        $SUDO cp "$rootfs/etc/dconf/profile/gdm" "$overlay/etc/dconf/profile/"
+    fi
+
+    # cpm binary + repo.url + hostname (fisiere ce nu vin din .cpm packages)
+    info "  cpm binary + repo.url + hostname"
+    $SUDO mkdir -p "$overlay/usr/local/bin" "$overlay/etc/cpm"
+    $SUDO cp "$CPM_HOST" "$overlay/usr/local/bin/cpm"
+    echo "$CPM_REPO_URL" | $SUDO tee "$overlay/etc/cpm/repo.url" >/dev/null
+    echo "carpatos" | $SUDO tee "$overlay/etc/hostname" >/dev/null
+
+    # Plymouth conf
+    info "  plymouth default theme = carpatos"
+    $SUDO mkdir -p "$overlay/etc/plymouth"
+    printf '[Daemon]\nTheme=carpatos\nShowDelay=0\n' \
+        | $SUDO tee "$overlay/etc/plymouth/plymouthd.conf" >/dev/null
+    if [ -d "$overlay/usr/share/plymouth/themes/carpatos" ]; then
+        $SUDO ln -sf carpatos/carpatos.plymouth \
+            "$overlay/usr/share/plymouth/themes/default.plymouth" || true
+    fi
+
+    info "  repack -> $extract/casper/minimal.standard.live.carpatos.squashfs"
+    local out_sqfs="$extract/casper/minimal.standard.live.carpatos.squashfs"
+    $SUDO rm -f "$out_sqfs"
+    $SUDO mksquashfs "$overlay" "$out_sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
+    info "  carpatos.squashfs: $(du -h "$out_sqfs" | cut -f1)"
+}
+
+# Activeaza carpatos overlay prin grub cmdline.
+patcheaza_grub_layerfs() {
+    local extract="$1"
+    info "  activeaza layerfs-path=...carpatos in grub.cfg"
+    if [ -f "$extract/boot/grub/grub.cfg" ]; then
+        # Adaug layerfs-path= ca prim parametru dupa /casper/vmlinuz
+        $SUDO sed -i \
+            -e 's|/casper/vmlinuz |/casper/vmlinuz layerfs-path=minimal.standard.live.carpatos.squashfs |' \
+            "$extract/boot/grub/grub.cfg"
+    fi
 }
 
 # Live overlay-ul are propriul gschemas.compiled care shadowuieste cel din
@@ -417,13 +486,10 @@ ROOTFS=$(extrage_rootfs "$SQFS")
 construieste_pachete
 aplica_overlay "$ROOTFS"
 ruleaza_hooks "$ROOTFS"
-repack_squashfs "$SQFS" "$ROOTFS"
-patcheaza_live_overlay "$EXTRACT" "$ROOTFS"
-# update_casper_initrd "$EXTRACT" "$ROOTFS"  # DEZACTIVAT — cpio repack
-# trunchiaza initrd-ul concatenat Ubuntu (85 MB -> 59 MB) si boot-ul
-# se blocheaza la ecran negru. TODO: foloseste unmkinitramfs care sti
-# sa gestioneze cpio concatenat (microcode plain + zstd init).
-# Pentru moment Plymouth la boot ramane Ubuntu, restul desktop-ului OK.
+# NU repack-uim minimal.squashfs (Ubuntu intact). Construiesc carpatos
+# ca strat separat, activat prin layerfs-path= in grub cmdline.
+construieste_carpatos_squashfs "$EXTRACT" "$ROOTFS"
+patcheaza_grub_layerfs "$EXTRACT"
 patcheaza_branding_iso "$EXTRACT"
 regenereaza_checksums "$EXTRACT"
 construieste_iso "$EXTRACT" "$ISO"
