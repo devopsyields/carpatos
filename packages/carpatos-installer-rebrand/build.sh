@@ -65,4 +65,32 @@ install -m 0644 /dev/null "$DESTDIR/etc/xdg/autostart/gnome-initial-setup-copy-w
 # Suprascriem si "First Launch" / Welcome al Ubuntu (daca exista)
 install -m 0644 /dev/null "$DESTDIR/etc/xdg/autostart/ubuntu-welcome.desktop" 2>/dev/null || true
 
+# GNOME Tour — Welcome wizard care apare la primul login si zice
+# "Welcome to Ubuntu". Dezactivat prin xdg autostart vid + .desktop NoDisplay.
+install -m 0644 /dev/null "$DESTDIR/etc/xdg/autostart/gnome-tour.desktop"
+cat > "$DESTDIR/usr/share/applications/org.gnome.Tour.desktop" <<'EOF'
+[Desktop Entry]
+Name=GNOME Tour
+NoDisplay=true
+Hidden=true
+Type=Application
+EOF
+
 chmod 0644 "$DESTDIR/usr/share/applications"/*.desktop
+
+# Logo ubiquity — suprascriem cu logo-ul carpatos. Ubiquity citeste
+# /usr/share/ubiquity/pixmaps/{logo,icon-fullcolor}.png si afiseaza in
+# titlul ferestrei. Inlocuim cu logo-ul nostru SVG (rsvg compatible).
+install -d "$DESTDIR/usr/share/ubiquity/pixmaps"
+# Pentru a folosi SVG-ul nostru ca PNG, trebuie sa-l rasterizam.
+# Aici punem un PNG dummy minimal (1x1 pixel transparent) — ubiquity
+# afiseaza tot textul "Instaleaza CarpatOS" din .desktop, doar logo-ul
+# vizual din wizard ramane fără. TODO: rasterizare SVG -> PNG la build.
+# Continut PNG 1x1 transparent (binary safe via printf hex):
+printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82' \
+    > "$DESTDIR/usr/share/ubiquity/pixmaps/logo.png" 2>/dev/null || true
+
+# In Ubuntu noble desktop: gnome-shell-extension-ubuntu-dock are
+# branding "Ubuntu Dock" la setari. Dezactivam complet (am pus dock
+# customizat in carpatos-gnome-defaults).
+install -m 0644 /dev/null "$DESTDIR/etc/xdg/autostart/ubuntu-dock.desktop" 2>/dev/null || true

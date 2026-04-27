@@ -380,6 +380,46 @@ patcheaza_initrd_casper_conf() {
     info "    /casper/initrd: $(du -h "$initrd" | cut -f1)"
 }
 
+# Append cpio archive cu fisiere carpatos la initrd-ul existent. Kernel
+# Linux citeste cpio-uri concatenate: fisierele din arhiva DE-AL DOILEA
+# overwrite-uiesc pe cele din prima. Asa modificam plymouth + LAYERFS_PATH
+# fara sa RUPEM initrd-ul original (zero risc pe boot).
+update_casper_initrd_append() {
+    local extract="$1"
+    local rootfs="$2"
+    info "[7c/8] Append plymouth + layerfs override la casper/initrd"
+    local initrd="$extract/casper/initrd"
+    [ -f "$initrd" ] || { warn "  casper/initrd lipseste"; return; }
+
+    local overlay="${ROOTFS_DIR%rootfs}initrd-append"
+    [ -n "${ROOTFS_DIR:-}" ] || overlay="$WORK/initrd-append"
+    $SUDO rm -rf "$overlay"
+    $SUDO mkdir -p "$overlay"
+
+    # 1) /conf/conf.d/00-carpatos-layer.conf — override LAYERFS_PATH
+    # (sourceaza dupa default-layer.conf alfabetic). Fisier in plus, nu
+    # modific cel existent.
+    $SUDO mkdir -p "$overlay/conf/conf.d"
+    echo "LAYERFS_PATH=minimal.standard.live.carpatos.squashfs" \
+        | $SUDO tee "$overlay/conf/conf.d/zz-carpatos-layer.conf" >/dev/null
+
+    # 2) Plymouth theme + plymouthd.conf (in initrd, vizibil de splash).
+    $SUDO mkdir -p "$overlay/etc/plymouth" \
+        "$overlay/usr/share/plymouth/themes/carpatos"
+    if [ -d "$rootfs/usr/share/plymouth/themes/carpatos" ]; then
+        $SUDO cp -a "$rootfs/usr/share/plymouth/themes/carpatos/." \
+            "$overlay/usr/share/plymouth/themes/carpatos/"
+    fi
+    printf '[Daemon]\nTheme=carpatos\nShowDelay=0\n' \
+        | $SUDO tee "$overlay/etc/plymouth/plymouthd.conf" >/dev/null
+
+    # 3) Cream cpio newc + append. find -mindepth 1 sa NU includem '.'
+    # ca root (care ar conflictua cu initramfs root).
+    info "    creez cpio overlay si append la initrd"
+    $SUDO sh -c "(cd '$overlay' && find . -mindepth 1 | cpio -o -H newc --quiet) >> '$initrd'"
+    info "    /casper/initrd: $(du -h "$initrd" | cut -f1) (era $(du -h "$initrd.bak" 2>/dev/null | cut -f1 || echo "?") inainte)"
+}
+
 # Live overlay-ul are propriul gschemas.compiled care shadowuieste cel din
 # baza. Daca-l lasam ca atare, wallpaper + dconf overrides nu se aplica
 # in sesiunea live. Solutie: copiem fisierele noastre carpatos-* peste
@@ -423,11 +463,9 @@ patcheaza_live_overlay() {
     $SUDO mksquashfs "$live_root" "$live_sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
 }
 
-# Plymouth la live boot citeste din /casper/initrd. minimal.squashfs nu
-# contine /boot/initrd.img-* (Ubuntu live foloseste casper/initrd direct).
-# In loc sa regeneram initrd, despachetam initrd-ul existent, adaugam
-# fisierele plymouth carpatos, repacheteaza in acelasi format.
-update_casper_initrd() {
+# OBSOLETE — repack-ul lossy strica boot-ul. Inlocuit de
+# update_casper_initrd_append (vezi mai jos). Pastrat ca referinta.
+update_casper_initrd_OLD() {
     local extract="$1"
     local rootfs="$2"
     info "[7c/8] Update casper/initrd cu plymouth carpatos"
@@ -539,9 +577,7 @@ ruleaza_hooks "$ROOTFS"
 # ca strat separat, activat prin layerfs-path= in grub cmdline.
 construieste_carpatos_squashfs "$EXTRACT" "$ROOTFS"
 patcheaza_grub_layerfs "$EXTRACT"
-# patcheaza_initrd_casper_conf "$EXTRACT"  # DEZACTIVAT — repack lossy
-# trunchiaza initrd (sau ceva e gresit), boot-ul hang-uia la ecran
-# negru. TODO debug. Ne bazam pe layerfs-path din grub cmdline.
+update_casper_initrd_append "$EXTRACT" "$ROOTFS"
 patcheaza_branding_iso "$EXTRACT"
 regenereaza_checksums "$EXTRACT"
 construieste_iso "$EXTRACT" "$ISO"
