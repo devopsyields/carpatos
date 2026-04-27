@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         squashfs-tools \
         zstd \
         cpio \
+        initramfs-tools-core \
         # GPT disk creation (pentru .img raw cu ESP)
         gdisk \
         dosfstools \

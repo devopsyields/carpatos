@@ -319,16 +319,63 @@ construieste_carpatos_squashfs() {
     info "  carpatos.squashfs: $(du -h "$out_sqfs" | cut -f1)"
 }
 
-# Activeaza carpatos overlay prin grub cmdline.
+# Activeaza carpatos overlay prin grub cmdline (centura) + via /etc/casper.conf
+# in initrd (bretele). Combinatie ca sa fim siguri ca LAYERFS_PATH = al nostru.
 patcheaza_grub_layerfs() {
     local extract="$1"
     info "  activeaza layerfs-path=...carpatos in grub.cfg"
     if [ -f "$extract/boot/grub/grub.cfg" ]; then
-        # Adaug layerfs-path= ca prim parametru dupa /casper/vmlinuz
         $SUDO sed -i \
             -e 's|/casper/vmlinuz |/casper/vmlinuz layerfs-path=minimal.standard.live.carpatos.squashfs |' \
             "$extract/boot/grub/grub.cfg"
     fi
+}
+
+# Modifica /etc/casper.conf din initrd ca default LAYERFS_PATH sa fie
+# al nostru carpatos. Foloseste unmkinitramfs pentru a despacheta corect
+# initrd-ul concatenat (early/main), modifica fisierul, repacheteaza
+# concat: early ca cpio plain + main ca cpio zstd.
+patcheaza_initrd_casper_conf() {
+    local extract="$1"
+    local initrd="$extract/casper/initrd"
+    [ -f "$initrd" ] || { warn "  casper/initrd lipseste"; return; }
+
+    info "  patchez /etc/casper.conf din initrd (LAYERFS_PATH=...carpatos)"
+    local work="${ROOTFS_DIR%rootfs}initrd-extract"
+    [ -n "${ROOTFS_DIR:-}" ] || work="$WORK/initrd-extract"
+    $SUDO rm -rf "$work"
+    $SUDO mkdir -p "$work"
+
+    # unmkinitramfs e in initramfs-tools-core
+    if ! command -v unmkinitramfs >/dev/null; then
+        info "    instalez initramfs-tools-core in container..."
+        $SUDO apt-get update -qq >/dev/null 2>&1
+        $SUDO apt-get install -y -qq initramfs-tools-core >/dev/null 2>&1
+    fi
+
+    /usr/bin/unmkinitramfs "$initrd" "$work" >/dev/null 2>&1
+    [ -d "$work/main" ] || { warn "  unmkinitramfs nu a produs main/"; return; }
+
+    # modific casper.conf
+    if [ -f "$work/main/etc/casper.conf" ]; then
+        $SUDO sed -i \
+            's|^LAYERFS_PATH=.*|LAYERFS_PATH=minimal.standard.live.carpatos.squashfs|' \
+            "$work/main/etc/casper.conf"
+        info "    casper.conf: $($SUDO grep ^LAYERFS_PATH "$work/main/etc/casper.conf")"
+    fi
+
+    # Repacheteaza: early ca cpio plain, main ca cpio zstd, concat.
+    info "    repacheteaza initrd (early plain + main zstd)"
+    local new_initrd="$work/initrd.new"
+    $SUDO rm -f "$new_initrd"
+
+    if [ -d "$work/early" ]; then
+        $SUDO sh -c "(cd '$work/early' && find . | cpio -o -H newc --quiet) > '$new_initrd'"
+    fi
+    $SUDO sh -c "(cd '$work/main' && find . | cpio -o -H newc --quiet | zstd -19 -T0 -q) >> '$new_initrd'"
+
+    $SUDO mv "$new_initrd" "$initrd"
+    info "    /casper/initrd: $(du -h "$initrd" | cut -f1)"
 }
 
 # Live overlay-ul are propriul gschemas.compiled care shadowuieste cel din
@@ -490,6 +537,7 @@ ruleaza_hooks "$ROOTFS"
 # ca strat separat, activat prin layerfs-path= in grub cmdline.
 construieste_carpatos_squashfs "$EXTRACT" "$ROOTFS"
 patcheaza_grub_layerfs "$EXTRACT"
+patcheaza_initrd_casper_conf "$EXTRACT"
 patcheaza_branding_iso "$EXTRACT"
 regenereaza_checksums "$EXTRACT"
 construieste_iso "$EXTRACT" "$ISO"
