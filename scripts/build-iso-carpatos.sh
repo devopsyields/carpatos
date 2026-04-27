@@ -248,23 +248,36 @@ construieste_iso() {
     local extract="$1"
     info "[8/8] Construiesc ISO final -> $OUT"
 
-    # Pentru arm64 doar UEFI. xorriso reconstruieste din extract dir +
-    # imaginea EFI deja prezenta in /boot/grub/efi.img.
-    local efi_img="$extract/boot/grub/efi.img"
-    if [ ! -f "$efi_img" ]; then
-        # Unele ISO Ubuntu au efi.img sub /EFI/boot/ direct
-        efi_img="$(find "$extract" -name efi.img | head -1)"
+    # Pentru arm64 doar UEFI. Cautam efi.img in locatia standard Ubuntu.
+    local efi_rel=""
+    for cand in boot/grub/efi.img EFI/boot/efi.img boot.img; do
+        if [ -f "$extract/$cand" ]; then
+            efi_rel="$cand"
+            break
+        fi
+    done
+    if [ -z "$efi_rel" ]; then
+        # fallback: cautare recursiva
+        local found
+        found="$(cd "$extract" && find . -type f -name 'efi.img' | head -1)"
+        efi_rel="${found#./}"
     fi
-    [ -f "$efi_img" ] || fatal "nu gasesc efi.img in ISO extras"
+    [ -n "$efi_rel" ] && [ -f "$extract/$efi_rel" ] || fatal "nu gasesc efi.img in ISO extras"
+    info "  efi image: $efi_rel"
 
+    # Pattern Ubuntu live arm64 — partition 2 EF (EFI System) appended,
+    # boot via -e cu interval pe partition 2.
     $SUDO xorriso -as mkisofs \
         -V "$CARPATOS_VOLID" \
         -o "$OUT" \
         -J -joliet-long -r \
-        -e "$(basename "$efi_img")" -no-emul-boot \
-        -append_partition 2 0xef "$efi_img" \
-        -partition_cyl_align all \
-        "$extract" 2>&1 | tail -5
+        -iso-level 3 \
+        -partition_offset 16 \
+        --protective-msdos-label \
+        -append_partition 2 0xef "$extract/$efi_rel" \
+        -appended_part_as_gpt \
+        -e '--interval:appended_partition_2:::' -no-emul-boot \
+        "$extract" 2>&1 | tail -10
 
     $SUDO chown "$(id -u):$(id -g)" "$OUT"
     info "ISO gata: $OUT ($(du -h "$OUT" | cut -f1))"
