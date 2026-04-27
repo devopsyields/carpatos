@@ -391,6 +391,16 @@ update_casper_initrd_append() {
     local initrd="$extract/casper/initrd"
     [ -f "$initrd" ] || { warn "  casper/initrd lipseste"; return; }
 
+    # Restaurez initrd-ul din ISO original ca sa nu se acumuleze append-uri
+    # de la rulari anterioare. Re-rulari ale script-ului = mereu fresh start.
+    local orig_iso
+    orig_iso="$DOWNLOAD/$(basename "$UBUNTU_ISO_URL")"
+    if [ -f "$orig_iso" ]; then
+        info "  restaurez casper/initrd din ISO original (anti-acumulare)"
+        $SUDO xorriso -osirrox on -indev "$orig_iso" \
+            -extract /casper/initrd "$initrd" 2>&1 | tail -1
+    fi
+
     local overlay="${ROOTFS_DIR%rootfs}initrd-append"
     [ -n "${ROOTFS_DIR:-}" ] || overlay="$WORK/initrd-append"
     $SUDO rm -rf "$overlay"
