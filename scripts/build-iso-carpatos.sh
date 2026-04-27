@@ -219,9 +219,19 @@ ruleaza_hooks() {
             dconf update || true
         fi
 
-        echo "[chroot] plymouth-set-default-theme carpatos"
-        if command -v plymouth-set-default-theme >/dev/null; then
-            plymouth-set-default-theme -R carpatos || true
+        echo "[chroot] plymouth default theme = carpatos (scriere directa)"
+        # plymouth-set-default-theme are bug-uri in chroot — scrie direct
+        # /etc/plymouth/plymouthd.conf (fisierul de pe care plymouth citeste).
+        mkdir -p /etc/plymouth
+        cat > /etc/plymouth/plymouthd.conf <<'PLYC'
+[Daemon]
+Theme=carpatos
+PLYC
+        # Cream si link-ul standard plymouth-default-theme (alte componente
+        # il citesc).
+        if [ -d /usr/share/plymouth/themes/carpatos ]; then
+            ln -sf /usr/share/plymouth/themes/carpatos/carpatos.plymouth \
+                /usr/share/plymouth/themes/default.plymouth || true
         fi
 
         echo "[chroot] update-initramfs (sa includa noua tema plymouth)"
@@ -267,23 +277,14 @@ patcheaza_live_overlay() {
     $SUDO mkdir -p "$(dirname "$live_root")"
     $SUDO unsquashfs -d "$live_root" "$live_sqfs" >/dev/null
 
-    # Copiem doar fisierele schema/dconf din pachetele noastre carpatos-*.
-    # Nu facem cpm install complet (ar duplica /usr/local/bin/cpm si alte
-    # fisiere care sunt deja in base).
-    for pkg in carpatos-gnome-defaults carpatos-gdm-theme; do
-        info "  apply $pkg in live overlay"
-        $SUDO env CPM_ROOT="$live_root" "$CPM_HOST" local \
-            "$PKG_BUILD/${pkg}.cpm" 2>&1 | grep -v "^Instalez " || true
-    done
-
-    # Recompileaza gschemas + dconf in live overlay
-    if [ -d "$live_root/usr/share/glib-2.0/schemas" ]; then
-        $SUDO chroot "$live_root" glib-compile-schemas \
-            /usr/share/glib-2.0/schemas/ 2>&1 | head -3 || true
-    fi
-    if [ -d "$live_root/etc/dconf/db" ]; then
-        $SUDO chroot "$live_root" dconf update 2>&1 | head -3 || true
-    fi
+    # Live overlay nu are toolchain-ul complet (e doar diff peste base),
+    # deci nu putem rula glib-compile-schemas/dconf in chroot acolo.
+    # Strategia: STERGEM fisierele compilate din live overlay si fortăm
+    # fall-through la cele din base (care au override-urile noastre).
+    info "  sterg gschemas.compiled din live overlay (fall-through la base)"
+    $SUDO rm -f "$live_root/usr/share/glib-2.0/schemas/gschemas.compiled"
+    info "  sterg dconf db compilate din live overlay"
+    $SUDO find "$live_root/etc/dconf/db" -maxdepth 1 -type f -delete 2>/dev/null || true
 
     info "  repack $(basename "$live_sqfs")"
     $SUDO rm -f "$live_sqfs"
