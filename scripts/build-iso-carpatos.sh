@@ -110,17 +110,24 @@ extrage_iso() {
     echo "$extract"
 }
 
-# ---- 3. localize filesystem.squashfs ----
+# ---- 3. localize squashfs principal ----
+# Ubuntu 24.04 desktop arm64 ISO are mai multe layere squashfs:
+#   minimal.squashfs (1.6 GB) — baza completa, plus chestii ca dconf,
+#     glib-compile-schemas, plymouth — TOT ce ne trebuie pentru hooks
+#   minimal.standard.squashfs (460 MB) — overlay diff cu standard pkgs
+#   minimal.standard.live.squashfs (925 MB) — overlay diff pentru live
+#   minimal.<lang>.squashfs (16 MB) — language packs
+# Modificam BASE-ul (minimal.squashfs) — overlay-ul carpatos se aplica la toate.
 gaseste_squashfs() {
     local extract="$1"
-    for cand in casper/filesystem.squashfs casper/minimal.squashfs \
+    for cand in casper/minimal.squashfs casper/filesystem.squashfs \
                 live/filesystem.squashfs install/filesystem.squashfs; do
         if [ -f "$extract/$cand" ]; then
             echo "$extract/$cand"
             return
         fi
     done
-    fatal "nu gasesc filesystem.squashfs in ISO"
+    fatal "nu gasesc squashfs principal in ISO"
 }
 
 # ---- 4. unsquashfs rootfs ----
