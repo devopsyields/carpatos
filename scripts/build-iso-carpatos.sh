@@ -112,12 +112,13 @@ extrage_iso() {
 
 # ---- 3. localize squashfs principal ----
 # Ubuntu 24.04 desktop arm64 ISO are mai multe layere squashfs:
-#   minimal.squashfs (1.6 GB) — baza completa, plus chestii ca dconf,
-#     glib-compile-schemas, plymouth — TOT ce ne trebuie pentru hooks
-#   minimal.standard.squashfs (460 MB) — overlay diff cu standard pkgs
-#   minimal.standard.live.squashfs (925 MB) — overlay diff pentru live
+#   minimal.squashfs (1.6 GB) — baza completa
+#   minimal.standard.squashfs (460 MB) — overlay diff standard pkgs
+#   minimal.standard.live.squashfs (925 MB) — overlay live (shadow-uieste base)
 #   minimal.<lang>.squashfs (16 MB) — language packs
-# Modificam BASE-ul (minimal.squashfs) — overlay-ul carpatos se aplica la toate.
+# Modificam BASE-ul (minimal.squashfs) ca overlay-ul carpatos sa apara
+# si in instalat si in live. Plus separat aplicam gschema overrides la
+# live overlay (acolo gschemas.compiled shadowuieste base-ul).
 gaseste_squashfs() {
     local extract="$1"
     for cand in casper/minimal.squashfs casper/filesystem.squashfs \
@@ -250,6 +251,62 @@ repack_squashfs() {
     $SUDO mksquashfs "$rootfs" "$sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
 }
 
+# Live overlay-ul are propriul gschemas.compiled care shadowuieste cel din
+# baza. Daca-l lasam ca atare, wallpaper + dconf overrides nu se aplica
+# in sesiunea live. Solutie: copiem fisierele noastre carpatos-* peste
+# o copie a overlay-ului si recompilam gschemas + dconf.
+patcheaza_live_overlay() {
+    local extract="$1"
+    local live_sqfs="$extract/casper/minimal.standard.live.squashfs"
+    [ -f "$live_sqfs" ] || { info "  fara live overlay, sar peste"; return; }
+
+    info "[7b/8] Patchez live overlay (gschemas + dconf carpatos)"
+    local live_root="${ROOTFS_DIR%rootfs}live-overlay-rootfs"
+    [ -n "${ROOTFS_DIR:-}" ] || live_root="$WORK/live-overlay-rootfs"
+    $SUDO rm -rf "$live_root"
+    $SUDO mkdir -p "$(dirname "$live_root")"
+    $SUDO unsquashfs -d "$live_root" "$live_sqfs" >/dev/null
+
+    # Copiem doar fisierele schema/dconf din pachetele noastre carpatos-*.
+    # Nu facem cpm install complet (ar duplica /usr/local/bin/cpm si alte
+    # fisiere care sunt deja in base).
+    for pkg in carpatos-gnome-defaults carpatos-gdm-theme; do
+        info "  apply $pkg in live overlay"
+        $SUDO env CPM_ROOT="$live_root" "$CPM_HOST" local \
+            "$PKG_BUILD/${pkg}.cpm" 2>&1 | grep -v "^Instalez " || true
+    done
+
+    # Recompileaza gschemas + dconf in live overlay
+    if [ -d "$live_root/usr/share/glib-2.0/schemas" ]; then
+        $SUDO chroot "$live_root" glib-compile-schemas \
+            /usr/share/glib-2.0/schemas/ 2>&1 | head -3 || true
+    fi
+    if [ -d "$live_root/etc/dconf/db" ]; then
+        $SUDO chroot "$live_root" dconf update 2>&1 | head -3 || true
+    fi
+
+    info "  repack $(basename "$live_sqfs")"
+    $SUDO rm -f "$live_sqfs"
+    $SUDO mksquashfs "$live_root" "$live_sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
+}
+
+# Modifica grub.cfg si .disk/info ca sa nu mai zica "Ubuntu" la boot.
+patcheaza_branding_iso() {
+    local extract="$1"
+    info "  rebrand boot menu + .disk/info"
+    if [ -f "$extract/boot/grub/grub.cfg" ]; then
+        $SUDO sed -i \
+            -e 's|Try or Install Ubuntu|Try or Install CarpatOS|g' \
+            -e 's|Install Ubuntu|Install CarpatOS|g' \
+            -e 's|Try Ubuntu|Try CarpatOS|g' \
+            "$extract/boot/grub/grub.cfg"
+    fi
+    if [ -f "$extract/.disk/info" ]; then
+        echo -n "CarpatOS Desktop ${CARPATOS_VERSION} arm64 (peste Ubuntu noble)" \
+            | $SUDO tee "$extract/.disk/info" >/dev/null
+    fi
+}
+
 regenereaza_checksums() {
     local extract="$1"
     info "  regenerez md5sum.txt"
@@ -292,6 +349,8 @@ construieste_pachete
 aplica_overlay "$ROOTFS"
 ruleaza_hooks "$ROOTFS"
 repack_squashfs "$SQFS" "$ROOTFS"
+patcheaza_live_overlay "$EXTRACT"
+patcheaza_branding_iso "$EXTRACT"
 regenereaza_checksums "$EXTRACT"
 construieste_iso "$EXTRACT" "$ISO"
 
