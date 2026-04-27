@@ -287,52 +287,88 @@ patcheaza_live_overlay() {
             "$PKG_BUILD/${pkg}.cpm" >/dev/null 2>&1 || true
     done
 
-    # Live overlay nu are toolchain (glib-compile-schemas, dconf). Bind-
-    # mount /usr si /lib din base rootfs intr-un punct temporar separat,
-    # apoi exec direct cu PATH/LD_LIBRARY_PATH ajustate pe live_root —
-    # asa scrie gschemas.compiled in live_root/usr/share/glib-2.0/schemas
-    # cu binarele din base, fara sa stricam fisierele live_root.
-    info "  compilez gschemas in live overlay"
-    if [ -d "$live_root/usr/share/glib-2.0/schemas" ]; then
-        $SUDO env LD_LIBRARY_PATH="$rootfs/usr/lib/aarch64-linux-gnu:$rootfs/lib/aarch64-linux-gnu" \
-            "$rootfs/usr/bin/glib-compile-schemas" \
-            "$live_root/usr/share/glib-2.0/schemas/" 2>&1 | head -3 || true
-    fi
+    # Live overlay nu are toolchain. Folosim overlayfs ca sa unim base
+    # rootfs (lower, read-only) cu live_root (upper). Chroot in union
+    # ne da binarele din base; fisierele rezultate (gschemas.compiled,
+    # dconf db compilat) ajung in live_root (upper) prin overlayfs.
+    info "  compile gschemas + dconf in live overlay (via overlayfs union)"
+    local merged="$live_root.merged"
+    local work="$live_root.work"
+    $SUDO rm -rf "$merged" "$work"
+    $SUDO mkdir -p "$merged" "$work"
+    $SUDO mount -t overlay overlay \
+        -o "lowerdir=$rootfs,upperdir=$live_root,workdir=$work" \
+        "$merged"
+    $SUDO mount -t proc  proc  "$merged/proc"
+    $SUDO mount -t sysfs sysfs "$merged/sys"
 
-    info "  compilez dconf db in live overlay"
-    if [ -d "$live_root/etc/dconf/db" ]; then
-        # dconf update vrea sa scrie /etc/dconf/db/*. Foloseste DCONF_PROFILE
-        # ca sa-l directionez la live_root.
-        for db_dir in "$live_root/etc/dconf/db"/*.d; do
-            [ -d "$db_dir" ] || continue
-            local db_name="${db_dir%.d}"
-            db_name="$(basename "$db_name")"
-            $SUDO env LD_LIBRARY_PATH="$rootfs/usr/lib/aarch64-linux-gnu:$rootfs/lib/aarch64-linux-gnu" \
-                "$rootfs/usr/bin/dconf" compile "$live_root/etc/dconf/db/$db_name" \
-                "$db_dir" 2>&1 | head -3 || true
-        done
-    fi
+    $SUDO chroot "$merged" /bin/sh -c '
+        glib-compile-schemas /usr/share/glib-2.0/schemas/ 2>&1 | head -3 || true
+        if [ -d /etc/dconf/db ]; then dconf update 2>&1 | head -3 || true; fi
+    '
+
+    $SUDO umount -lf "$merged/sys"  || true
+    $SUDO umount -lf "$merged/proc" || true
+    $SUDO umount -lf "$merged"      || true
+    $SUDO rm -rf "$merged" "$work"
 
     info "  repack $(basename "$live_sqfs")"
     $SUDO rm -f "$live_sqfs"
     $SUDO mksquashfs "$live_root" "$live_sqfs" -comp xz -b 1M -no-progress 2>&1 | tail -3
 }
 
-# Plymouth la live boot citeste din /casper/initrd, NU din /boot/initrd.img
-# al rootfs-ului. Copiem initrd-ul din rootfs (care a fost regenerat cu
-# update-initramfs si include theme-ul carpatos) peste casper/initrd.
+# Plymouth la live boot citeste din /casper/initrd. minimal.squashfs nu
+# contine /boot/initrd.img-* (Ubuntu live foloseste casper/initrd direct).
+# In loc sa regeneram initrd, despachetam initrd-ul existent, adaugam
+# fisierele plymouth carpatos, repacheteaza in acelasi format.
 update_casper_initrd() {
     local extract="$1"
     local rootfs="$2"
     info "[7c/8] Update casper/initrd cu plymouth carpatos"
-    local initrd_src
-    initrd_src="$($SUDO find "$rootfs/boot" -maxdepth 1 -name 'initrd.img-*' -type f | sort -V | tail -1)"
-    if [ -n "$initrd_src" ] && [ -f "$initrd_src" ]; then
-        $SUDO cp "$initrd_src" "$extract/casper/initrd"
-        info "  copied $(basename "$initrd_src") -> casper/initrd ($(du -h "$extract/casper/initrd" | cut -f1))"
-    else
-        warn "  nu gasesc initrd.img-* in rootfs/boot, casper/initrd ramane original"
+    local initrd="$extract/casper/initrd"
+    [ -f "$initrd" ] || { warn "  /casper/initrd lipseste, sar peste"; return; }
+
+    # Detectez compresia (zstd / xz / gz / cpio plain)
+    local magic
+    magic=$($SUDO head -c 4 "$initrd" | od -An -tx1 | tr -d ' \n')
+    local decompress repack
+    case "$magic" in
+        28b52ffd*) decompress="zstd -dc";  repack="zstd --ultra -22 -T0" ;;
+        fd377a58*) decompress="xz -dc";    repack="xz --check=crc32 -9 --lzma2=dict=1MiB" ;;
+        1f8b0808*|1f8b*) decompress="gzip -dc"; repack="gzip" ;;
+        303730*)   decompress="cat";       repack="cat" ;;  # cpio plain
+        *) warn "  format necunoscut casper/initrd ($magic), sar"; return ;;
+    esac
+
+    local extract_dir="${ROOTFS_DIR%rootfs}initrd-extract"
+    [ -n "${ROOTFS_DIR:-}" ] || extract_dir="$WORK/initrd-extract"
+    $SUDO rm -rf "$extract_dir"
+    $SUDO mkdir -p "$extract_dir"
+    info "  despachetez initrd ($magic) -> $extract_dir"
+    (cd "$extract_dir" && $SUDO sh -c "$decompress < '$initrd' | cpio -idm --quiet") 2>&1 | head -3 || true
+
+    info "  copiez plymouth theme carpatos in initrd"
+    $SUDO mkdir -p "$extract_dir/usr/share/plymouth/themes/carpatos" "$extract_dir/etc/plymouth"
+    if [ -d "$rootfs/usr/share/plymouth/themes/carpatos" ]; then
+        $SUDO cp -a "$rootfs/usr/share/plymouth/themes/carpatos/." \
+            "$extract_dir/usr/share/plymouth/themes/carpatos/"
     fi
+    if [ -f "$rootfs/etc/plymouth/plymouthd.conf" ]; then
+        $SUDO cp -a "$rootfs/etc/plymouth/plymouthd.conf" \
+            "$extract_dir/etc/plymouth/plymouthd.conf"
+    else
+        printf '[Daemon]\nTheme=carpatos\n' \
+            | $SUDO tee "$extract_dir/etc/plymouth/plymouthd.conf" >/dev/null
+    fi
+    if [ -d "$rootfs/usr/share/plymouth/themes" ]; then
+        $SUDO ln -sf carpatos/carpatos.plymouth \
+            "$extract_dir/usr/share/plymouth/themes/default.plymouth" || true
+    fi
+
+    info "  repac initrd"
+    (cd "$extract_dir" && $SUDO sh -c "find . | cpio -o -H newc --quiet | $repack > '$initrd.new'")
+    $SUDO mv "$initrd.new" "$initrd"
+    info "  /casper/initrd: $(du -h "$initrd" | cut -f1)"
 }
 
 # Modifica grub.cfg si .disk/info ca sa nu mai zica "Ubuntu" la boot.

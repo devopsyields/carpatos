@@ -38,6 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         xorriso \
         mtools \
         squashfs-tools \
+        zstd \
+        cpio \
         # GPT disk creation (pentru .img raw cu ESP)
         gdisk \
         dosfstools \
@@ -50,6 +52,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         # Utilitare
         file \
         python3 \
+        curl \
+        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Cross-compilers musl (prebuilt de la musl.cc) — pentru ambele arhitecturi
