@@ -153,16 +153,15 @@ extrage_rootfs() {
 }
 
 # ---- 5. construieste pachete carpatos-* ----
+# Mereu rebuild — pachetele-s mici (~10s total) si trebuie sa fim siguri
+# ca preluam ultimele modificari de la sursa la fiecare run.
 construieste_pachete() {
-    info "[4/8] Construiesc pachete carpatos-*"
+    info "[4/8] Construiesc pachete carpatos-* (always fresh)"
     for pkg in "${CARPATOS_PACKAGES[@]}"; do
         local out="$PKG_BUILD/${pkg}.cpm"
-        if [ -f "$out" ]; then
-            info "  $pkg.cpm exista (reuse)"
-        else
-            info "  build $pkg"
-            "$CPM_HOST" build "$ROOT/packages/$pkg" -o "$out" >/dev/null
-        fi
+        info "  build $pkg"
+        rm -f "$out"
+        "$CPM_HOST" build "$ROOT/packages/$pkg" -o "$out" >/dev/null
     done
 }
 
