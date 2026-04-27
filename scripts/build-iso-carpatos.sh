@@ -356,12 +356,15 @@ patcheaza_initrd_casper_conf() {
     /usr/bin/unmkinitramfs "$initrd" "$work" >/dev/null 2>&1
     [ -d "$work/main" ] || { warn "  unmkinitramfs nu a produs main/"; return; }
 
-    # modific casper.conf
-    if [ -f "$work/main/etc/casper.conf" ]; then
-        $SUDO sed -i \
-            's|^LAYERFS_PATH=.*|LAYERFS_PATH=minimal.standard.live.carpatos.squashfs|' \
-            "$work/main/etc/casper.conf"
-        info "    casper.conf: $($SUDO grep ^LAYERFS_PATH "$work/main/etc/casper.conf")"
+    # LAYERFS_PATH e definit in /conf/conf.d/default-layer.conf, NU
+    # in /etc/casper.conf (acela are doar USERNAME/HOST etc.).
+    local layer_conf="$work/main/conf/conf.d/default-layer.conf"
+    if [ -f "$layer_conf" ]; then
+        echo "LAYERFS_PATH=minimal.standard.live.carpatos.squashfs" \
+            | $SUDO tee "$layer_conf" >/dev/null
+        info "    default-layer.conf: $($SUDO cat "$layer_conf")"
+    else
+        warn "    default-layer.conf nu exista la $layer_conf"
     fi
 
     # Repacheteaza: early ca cpio plain, main ca cpio zstd, concat.
