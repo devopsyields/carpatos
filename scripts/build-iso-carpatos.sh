@@ -419,7 +419,11 @@ aplica_overlay "$ROOTFS"
 ruleaza_hooks "$ROOTFS"
 repack_squashfs "$SQFS" "$ROOTFS"
 patcheaza_live_overlay "$EXTRACT" "$ROOTFS"
-update_casper_initrd "$EXTRACT" "$ROOTFS"
+# update_casper_initrd "$EXTRACT" "$ROOTFS"  # DEZACTIVAT — cpio repack
+# trunchiaza initrd-ul concatenat Ubuntu (85 MB -> 59 MB) si boot-ul
+# se blocheaza la ecran negru. TODO: foloseste unmkinitramfs care sti
+# sa gestioneze cpio concatenat (microcode plain + zstd init).
+# Pentru moment Plymouth la boot ramane Ubuntu, restul desktop-ului OK.
 patcheaza_branding_iso "$EXTRACT"
 regenereaza_checksums "$EXTRACT"
 construieste_iso "$EXTRACT" "$ISO"
