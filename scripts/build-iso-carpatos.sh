@@ -131,14 +131,20 @@ gaseste_squashfs() {
 }
 
 # ---- 4. unsquashfs rootfs ----
+# ATENTIE: rootfs-ul Linux contine fisiere cu xattrs + perechi de fisiere
+# care difera doar prin case (ex: 'Sys' / 'sys' in perl). Pe Mac APFS via
+# Docker bind mount asta esueaza. Pe Linux native sau intr-un volum Docker
+# Linux ext4 merge.
+# Override prin env ROOTFS_DIR — recomandata o cale in afara mount-ului host.
 extrage_rootfs() {
     local sqfs="$1"
-    local rootfs="$WORK/rootfs"
+    local rootfs="${ROOTFS_DIR:-$WORK/rootfs}"
     if [ -d "$rootfs" ] && [ -n "$($SUDO ls -A "$rootfs" 2>/dev/null)" ]; then
         info "[3/8] rootfs deja extras la $rootfs (reuse)"
     else
         info "[3/8] Unsquashfs $(basename "$sqfs") -> $rootfs"
         $SUDO rm -rf "$rootfs"
+        $SUDO mkdir -p "$(dirname "$rootfs")"
         $SUDO unsquashfs -d "$rootfs" "$sqfs" >/dev/null
     fi
     echo "$rootfs"
