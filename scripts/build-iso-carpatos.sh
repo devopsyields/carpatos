@@ -287,30 +287,18 @@ patcheaza_live_overlay() {
             "$PKG_BUILD/${pkg}.cpm" >/dev/null 2>&1 || true
     done
 
-    # Live overlay nu are toolchain. Folosim overlayfs ca sa unim base
-    # rootfs (lower, read-only) cu live_root (upper). Chroot in union
-    # ne da binarele din base; fisierele rezultate (gschemas.compiled,
-    # dconf db compilat) ajung in live_root (upper) prin overlayfs.
-    info "  compile gschemas + dconf in live overlay (via overlayfs union)"
-    local merged="$live_root.merged"
-    local work="$live_root.work"
-    $SUDO rm -rf "$merged" "$work"
-    $SUDO mkdir -p "$merged" "$work"
-    $SUDO mount -t overlay overlay \
-        -o "lowerdir=$rootfs,upperdir=$live_root,workdir=$work" \
-        "$merged"
-    $SUDO mount -t proc  proc  "$merged/proc"
-    $SUDO mount -t sysfs sysfs "$merged/sys"
-
-    $SUDO chroot "$merged" /bin/sh -c '
-        glib-compile-schemas /usr/share/glib-2.0/schemas/ 2>&1 | head -3 || true
-        if [ -d /etc/dconf/db ]; then dconf update 2>&1 | head -3 || true; fi
-    '
-
-    $SUDO umount -lf "$merged/sys"  || true
-    $SUDO umount -lf "$merged/proc" || true
-    $SUDO umount -lf "$merged"      || true
-    $SUDO rm -rf "$merged" "$work"
+    # Strategie: sterg fisierele compilate din live overlay (gschemas.
+    # compiled si dconf db). Base rootfs are deja totul compilat cu
+    # override-urile noastre carpatos. Dupa overlayfs mount la live boot,
+    # base layer's compiled iese la suprafata (nu mai e shadowuit de
+    # un fisier 0-byte sau diferit din live overlay).
+    info "  sterg compiled din live overlay (fall-through la base)"
+    $SUDO rm -f "$live_root/usr/share/glib-2.0/schemas/gschemas.compiled"
+    # dconf db files (fara extensie, in /etc/dconf/db/) — pastram numai
+    # subdirectoarele *.d (override files, util la rebuild).
+    if [ -d "$live_root/etc/dconf/db" ]; then
+        $SUDO find "$live_root/etc/dconf/db" -mindepth 1 -maxdepth 1 -type f -delete
+    fi
 
     info "  repack $(basename "$live_sqfs")"
     $SUDO rm -f "$live_sqfs"
