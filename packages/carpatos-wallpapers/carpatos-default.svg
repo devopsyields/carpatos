@@ -48,8 +48,5 @@
     L1880,1820 L2200,1700 L2520,1820 L2840,1700 L3160,1820
     L3480,1700 L3840,1820 L3840,2160 L0,2160 Z"/>
 
-  <!-- Wordmark CarpatOS subtil in coltul jos-stanga -->
-  <text x="120" y="2070" font-family="DejaVu Sans, sans-serif" font-size="64"
-        font-weight="300" fill="#f5e6d3" opacity="0.55"
-        letter-spacing="6">CarpatOS</text>
+  <!-- Wordmark scos — panel-ul GNOME shell de jos il taia. Lasam doar peisajul. -->
 </svg>

@@ -53,13 +53,13 @@ picture-options='zoom'
 # --- Tema interfata (toate profilele) ---
 [org.gnome.desktop.interface]
 color-scheme='prefer-dark'
-icon-theme='Yaru'
-cursor-theme='Yaru'
+icon-theme='Adwaita'
+cursor-theme='Adwaita'
 
 [org.gnome.desktop.interface:ubuntu]
 color-scheme='prefer-dark'
-icon-theme='Yaru'
-cursor-theme='Yaru'
+icon-theme='Adwaita'
+cursor-theme='Adwaita'
 
 # --- gnome-shell favorite apps ---
 [org.gnome.shell]

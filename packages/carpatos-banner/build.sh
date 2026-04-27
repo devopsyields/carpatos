@@ -70,3 +70,18 @@ echo "  https://github.com/devopsyields/carpatos"
 echo
 EOF
 chmod 0755 "$DESTDIR/etc/update-motd.d/01-carpatos"
+
+# Shell prompt CarpatOS — overlay peste /etc/bash.bashrc default Ubuntu.
+# Activeaza un PS1 distinctiv (verde/auriu in loc de verde/albastru Ubuntu)
+# pentru orice shell interactiv. Nume gazda colorat in auriu Carpati.
+install -d "$DESTDIR/etc/profile.d"
+cat > "$DESTDIR/etc/profile.d/carpatos-prompt.sh" <<'EOF'
+# carpatos-prompt — PS1 distinctiv pentru CarpatOS, overlay peste default
+# Ubuntu. Sourceat la fiecare login interactiv prin /etc/profile sau
+# bash invokat ca login shell.
+if [ -n "$BASH_VERSION" ] && [ "${PS1:-}" ] && case "$TERM" in xterm*|rxvt*|screen*|tmux*|linux) true ;; *) false ;; esac; then
+    # Verde mai inchis (mountains green) + galben auriu (Carpati sunset)
+    PS1='\[\033[01;32m\]\u\[\033[00m\]@\[\033[01;33m\]\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+fi
+EOF
+chmod 0644 "$DESTDIR/etc/profile.d/carpatos-prompt.sh"

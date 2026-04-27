@@ -56,7 +56,5 @@
     L1960,1820 L2280,1700 L2620,1820 L2940,1700 L3260,1820
     L3580,1700 L3840,1820 L3840,2160 L0,2160 Z"/>
 
-  <text x="120" y="2070" font-family="DejaVu Sans, sans-serif" font-size="64"
-        font-weight="300" fill="#f5e6d3" opacity="0.45"
-        letter-spacing="6">CarpatOS</text>
+  <!-- Wordmark scos (taiat de panel) -->
 </svg>
