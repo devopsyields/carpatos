@@ -540,7 +540,9 @@ ruleaza_hooks "$ROOTFS"
 # ca strat separat, activat prin layerfs-path= in grub cmdline.
 construieste_carpatos_squashfs "$EXTRACT" "$ROOTFS"
 patcheaza_grub_layerfs "$EXTRACT"
-patcheaza_initrd_casper_conf "$EXTRACT"
+# patcheaza_initrd_casper_conf "$EXTRACT"  # DEZACTIVAT — repack lossy
+# trunchiaza initrd (sau ceva e gresit), boot-ul hang-uia la ecran
+# negru. TODO debug. Ne bazam pe layerfs-path din grub cmdline.
 patcheaza_branding_iso "$EXTRACT"
 regenereaza_checksums "$EXTRACT"
 construieste_iso "$EXTRACT" "$ISO"
