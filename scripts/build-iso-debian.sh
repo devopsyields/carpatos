@@ -511,10 +511,11 @@ EOF
     }
 
     # Construim FAT image cu /EFI/BOOT/BOOTAA64.EFI
-    info "  pack EFI partition"
-    local esp_size_kb=8192  # 8 MiB
-    dd if=/dev/zero of="$efi_img" bs=1024 count=$esp_size_kb 2>/dev/null
-    mkfs.fat -F 16 -n CARPATOS_EFI "$efi_img" >/dev/null
+    # GRUB EFI standalone arm64 = ~11 MB, asa 32 MB FAT16 e necesar.
+    # Label max 11 chars (FAT limitation).
+    info "  pack EFI partition (32 MB FAT16)"
+    dd if=/dev/zero of="$efi_img" bs=1M count=32 2>/dev/null
+    mkfs.fat -F 16 -n CARPATOSEFI "$efi_img" >/dev/null
     mmd -i "$efi_img" ::/EFI ::/EFI/BOOT
     $SUDO mcopy -i "$efi_img" "$ROOTFS_DIR/tmp/bootaa64.efi" ::/EFI/BOOT/BOOTAA64.EFI
 
