@@ -94,6 +94,29 @@ EOF
 
 chmod 0644 "$DESTDIR/usr/share/applications"/*.desktop
 
+# gnome-initial-setup este de fapt declansat de systemd USER services,
+# NU de xdg autostart. xdg autostart .desktop empty nu opreste nimic.
+# Mask-uim serviciile prin symlink la /dev/null (systemd skip-uieste).
+install -d "$DESTDIR/etc/systemd/user"
+for svc in gnome-initial-setup-copy-worker.service \
+           gnome-initial-setup-first-login.service \
+           org.gnome.Shell.Welcome.target \
+           gnome-session@gnome-initial-setup.target; do
+    ln -sf /dev/null "$DESTDIR/etc/systemd/user/$svc"
+done
+
+# Pentru Welcome at /usr/share/ubuntu/applications/gnome-initial-setup.desktop
+# (cale specifica Ubuntu), suprascriem cu NoDisplay=true ca shell-ul sa nu-l
+# afiseze niciunde.
+install -d "$DESTDIR/usr/share/ubuntu/applications"
+cat > "$DESTDIR/usr/share/ubuntu/applications/gnome-initial-setup.desktop" <<'EOF'
+[Desktop Entry]
+Name=Welcome
+NoDisplay=true
+Hidden=true
+Type=Application
+EOF
+
 # Logo ubiquity — suprascriem cu logo-ul carpatos. Ubiquity citeste
 # /usr/share/ubiquity/pixmaps/{logo,icon-fullcolor}.png si afiseaza in
 # titlul ferestrei. Inlocuim cu logo-ul nostru SVG (rsvg compatible).
