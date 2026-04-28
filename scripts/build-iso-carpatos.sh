@@ -311,6 +311,44 @@ construieste_carpatos_squashfs() {
             "$overlay/usr/share/plymouth/themes/default.plymouth" || true
     fi
 
+    # Ubiquity rebrand: copy Glade UI files din rootfs si sed Ubuntu->CarpatOS.
+    # Asta suprascrie fisierele originale via overlayfs, fara sa atinga
+    # ubiquity package in minimal.squashfs.
+    if [ -d "$rootfs/usr/share/ubiquity" ]; then
+        info "  ubiquity rebrand (sed Ubuntu->CarpatOS in glade UI)"
+        $SUDO mkdir -p "$overlay/usr/share/ubiquity"
+        $SUDO cp -a "$rootfs/usr/share/ubiquity/." "$overlay/usr/share/ubiquity/"
+        # Sed pe toate .ui (Glade XML), .py (in caz de strings), .desktop
+        $SUDO find "$overlay/usr/share/ubiquity" \
+            \( -name '*.ui' -o -name '*.py' -o -name '*.desktop' \) -type f \
+            -exec sed -i \
+                -e 's|Install Ubuntu|Instaleaza CarpatOS|g' \
+                -e 's|Welcome to Ubuntu|Bun venit la CarpatOS|g' \
+                -e 's|Try Ubuntu|Incearca CarpatOS|g' \
+                -e 's|Erase disk and install Ubuntu|Sterge disc si instaleaza CarpatOS|g' \
+                -e 's|Install Ubuntu alongside|Instaleaza CarpatOS alaturi de|g' \
+                -e 's|Ubuntu Server|CarpatOS Server|g' \
+                -e 's|Ubuntu Core|CarpatOS Core|g' \
+                -e 's|"Ubuntu"|"CarpatOS"|g' \
+                {} +
+    fi
+    # Acelasi pentru ubiquity-frontend / -slideshow
+    for d in /usr/share/ubiquity-slideshow /usr/lib/ubiquity; do
+        if [ -d "$rootfs$d" ]; then
+            info "  rebrand $d"
+            $SUDO mkdir -p "$overlay$d"
+            $SUDO cp -a "$rootfs$d/." "$overlay$d/"
+            $SUDO find "$overlay$d" -type f \
+                \( -name '*.html' -o -name '*.po' -o -name '*.py' \
+                   -o -name '*.ui' -o -name '*.xml' \) \
+                -exec sed -i \
+                    -e 's|Install Ubuntu|Instaleaza CarpatOS|g' \
+                    -e 's|Welcome to Ubuntu|Bun venit la CarpatOS|g' \
+                    -e 's|>Ubuntu<|>CarpatOS<|g' \
+                    {} + 2>/dev/null || true
+        fi
+    done
+
     info "  repack -> $extract/casper/minimal.standard.live.carpatos.squashfs"
     local out_sqfs="$extract/casper/minimal.standard.live.carpatos.squashfs"
     $SUDO rm -f "$out_sqfs"

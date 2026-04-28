@@ -66,14 +66,30 @@ install -m 0644 /dev/null "$DESTDIR/etc/xdg/autostart/gnome-initial-setup-copy-w
 install -m 0644 /dev/null "$DESTDIR/etc/xdg/autostart/ubuntu-welcome.desktop" 2>/dev/null || true
 
 # GNOME Tour — Welcome wizard care apare la primul login si zice
-# "Welcome to Ubuntu". Dezactivat prin xdg autostart vid + .desktop NoDisplay.
+# "Welcome to Ubuntu". Numele real e `org.gnome.Tour.desktop`. Dezactivat
+# prin xdg autostart vid + .desktop NoDisplay + sterge state file.
 install -m 0644 /dev/null "$DESTDIR/etc/xdg/autostart/gnome-tour.desktop"
+install -m 0644 /dev/null "$DESTDIR/etc/xdg/autostart/org.gnome.Tour.desktop"
 cat > "$DESTDIR/usr/share/applications/org.gnome.Tour.desktop" <<'EOF'
 [Desktop Entry]
 Name=GNOME Tour
 NoDisplay=true
 Hidden=true
 Type=Application
+EOF
+cat > "$DESTDIR/usr/share/applications/gnome-tour.desktop" <<'EOF'
+[Desktop Entry]
+Name=GNOME Tour
+NoDisplay=true
+Hidden=true
+Type=Application
+EOF
+# Marcheaza tour-ul ca rulat deja prin gsettings persistat
+install -d "$DESTDIR/usr/share/glib-2.0/schemas"
+cat > "$DESTDIR/usr/share/glib-2.0/schemas/95_carpatos-no-tour.gschema.override" <<'EOF'
+# Disable GNOME Tour Welcome wizard la live boot.
+[org.gnome.shell]
+welcome-dialog-last-shown-version='99.99'
 EOF
 
 chmod 0644 "$DESTDIR/usr/share/applications"/*.desktop

@@ -71,17 +71,79 @@ echo
 EOF
 chmod 0755 "$DESTDIR/etc/update-motd.d/01-carpatos"
 
-# Shell prompt CarpatOS — overlay peste /etc/bash.bashrc default Ubuntu.
-# Activeaza un PS1 distinctiv (verde/auriu in loc de verde/albastru Ubuntu)
-# pentru orice shell interactiv. Nume gazda colorat in auriu Carpati.
-install -d "$DESTDIR/etc/profile.d"
-cat > "$DESTDIR/etc/profile.d/carpatos-prompt.sh" <<'EOF'
-# carpatos-prompt — PS1 distinctiv pentru CarpatOS, overlay peste default
-# Ubuntu. Sourceat la fiecare login interactiv prin /etc/profile sau
-# bash invokat ca login shell.
-if [ -n "$BASH_VERSION" ] && [ "${PS1:-}" ] && case "$TERM" in xterm*|rxvt*|screen*|tmux*|linux) true ;; *) false ;; esac; then
-    # Verde mai inchis (mountains green) + galben auriu (Carpati sunset)
-    PS1='\[\033[01;32m\]\u\[\033[00m\]@\[\033[01;33m\]\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+# Shell prompt CarpatOS — suprascrie /etc/bash.bashrc COMPLET, in plus
+# fata de profile.d (care NU e sourceat de gnome-terminal — non-login).
+# Continut: minimum-viable + PS1 carpatos verde/auriu/albastru.
+install -d "$DESTDIR/etc"
+cat > "$DESTDIR/etc/bash.bashrc" <<'EOF'
+# /etc/bash.bashrc — CarpatOS Desktop default bash interactive setup.
+# Suprascrie default-ul Ubuntu pentru a aplica PS1 specific carpatos.
+
+# Daca shell non-interactiv, exit
+[ -z "$PS1" ] && return
+
+# Pastrare history
+HISTCONTROL=ignoreboth
+HISTSIZE=1000
+HISTFILESIZE=2000
+shopt -s histappend
+shopt -s checkwinsize
+
+# Lesspipe (pentru less pe arhive etc., daca e instalat)
+[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# PS1 CarpatOS: user verde + @host auriu + :path albastru + $ default
+PS1='\[\033[01;32m\]\u\[\033[00m\]@\[\033[01;33m\]\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+# Aliases standard
+alias ls='ls --color=auto'
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+
+# Bash completion (daca e instalat)
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        . /etc/bash_completion
+    fi
+fi
+
+# Sourceaza /etc/bash.bashrc.d/* daca exista
+if [ -d /etc/bash.bashrc.d ]; then
+    for f in /etc/bash.bashrc.d/*.sh; do
+        [ -r "$f" ] && . "$f"
+    done
+    unset f
 fi
 EOF
-chmod 0644 "$DESTDIR/etc/profile.d/carpatos-prompt.sh"
+chmod 0644 "$DESTDIR/etc/bash.bashrc"
+
+# /etc/skel/.bashrc — pentru utilizatorii noi (live user "ubuntu" e
+# creat din /etc/skel la session start). Suprascriem cu varianta
+# minimala care nu reseteaza PS1-ul nostru din bash.bashrc.
+install -d "$DESTDIR/etc/skel"
+cat > "$DESTDIR/etc/skel/.bashrc" <<'EOF'
+# /etc/skel/.bashrc — CarpatOS user default. PS1-ul e setat in
+# /etc/bash.bashrc, NU il resetam aici (cum face Ubuntu's default).
+
+# Shell non-interactiv -> exit
+[ -z "$PS1" ] && return
+
+# History merge cu setarile din /etc/bash.bashrc
+HISTCONTROL=ignoreboth
+HISTSIZE=1000
+HISTFILESIZE=2000
+shopt -s histappend
+shopt -s checkwinsize
+
+# Aliases personale (simplu set, fara override la PS1)
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+EOF
+chmod 0644 "$DESTDIR/etc/skel/.bashrc"
