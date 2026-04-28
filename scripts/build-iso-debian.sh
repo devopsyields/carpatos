@@ -263,6 +263,14 @@ LIVE_LOCALES="en_US.UTF-8 ro_RO.UTF-8"
 LIVE_KEYBOARD_LAYOUTS="us"
 EOF2
 
+        echo "[chroot] enable live-config.service (CRITICAL — fara asta nu creaza user)"
+        # systemctl enable in chroot poate sa hang pe dbus, cream symlinkul direct
+        mkdir -p /etc/systemd/system/multi-user.target.wants
+        ln -sf /lib/systemd/system/live-config.service \
+            /etc/systemd/system/multi-user.target.wants/live-config.service
+        # Sterg branding Calamares Debian (avem carpatos)
+        rm -rf /etc/calamares/branding/debian
+
         echo "[chroot] GDM autologin pentru live user"
         mkdir -p /etc/gdm3
         cat > /etc/gdm3/daemon.conf <<EOF2
