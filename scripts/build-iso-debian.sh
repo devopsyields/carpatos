@@ -454,25 +454,39 @@ construieste_squashfs() {
 construieste_iso() {
     info "[8/8] Construiesc ISO bootable cu GRUB EFI arm64"
 
-    # GRUB config in ISO
+    # Live-boot signatures — fara astea, scripts/live in initrd nu
+    # detecteaza ISO-ul ca live media si pica la busybox shell.
+    info "  scriu live-boot signature files (.disk/info, filesystem.packages/.size)"
+    $SUDO mkdir -p "$ISO_DIR/.disk"
+    echo "CarpatOS Desktop ${CARPATOS_VERSION} ${DEBIAN_ARH}" \
+        | $SUDO tee "$ISO_DIR/.disk/info" >/dev/null
+    echo "full_cd/single" | $SUDO tee "$ISO_DIR/.disk/cd_type" >/dev/null
+    $SUDO chroot "$ROOTFS_DIR" dpkg-query -W \
+        --showformat='${Package} ${Version}\n' \
+        | $SUDO tee "$ISO_DIR/live/filesystem.packages" >/dev/null
+    $SUDO du -sx --block-size=1 "$ROOTFS_DIR" 2>/dev/null \
+        | cut -f1 | $SUDO tee "$ISO_DIR/live/filesystem.size" >/dev/null
+
+    # GRUB config in ISO — live-media-path=/live explicit, plus verbose
+    # mode pentru debug (text mode, vad mesajele live-boot).
     mkdir -p "$ISO_DIR/boot/grub"
     cat > "$ISO_DIR/boot/grub/grub.cfg" <<EOF
-set timeout=10
+set timeout=5
 set default=0
 loadfont unicode
 
 menuentry "CarpatOS Desktop ${CARPATOS_VERSION} (live)" {
-    linux  /live/vmlinuz boot=live components quiet splash
+    linux  /live/vmlinuz boot=live components splash quiet live-media-path=/live
     initrd /live/initrd.img
 }
 
 menuentry "CarpatOS Desktop ${CARPATOS_VERSION} (live, modul safe)" {
-    linux  /live/vmlinuz boot=live components quiet splash nomodeset
+    linux  /live/vmlinuz boot=live components quiet splash nomodeset live-media-path=/live
     initrd /live/initrd.img
 }
 
-menuentry "CarpatOS Desktop — instalator (text)" {
-    linux  /live/vmlinuz boot=live components quiet
+menuentry "CarpatOS Desktop ${CARPATOS_VERSION} (debug verbose)" {
+    linux  /live/vmlinuz boot=live components verbose live-media-path=/live
     initrd /live/initrd.img
 }
 EOF
