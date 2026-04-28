@@ -263,11 +263,31 @@ LIVE_LOCALES="en_US.UTF-8 ro_RO.UTF-8"
 LIVE_KEYBOARD_LAYOUTS="us"
 EOF2
 
-        echo "[chroot] enable live-config.service (CRITICAL — fara asta nu creaza user)"
-        # systemctl enable in chroot poate sa hang pe dbus, cream symlinkul direct
+        echo "[chroot] enable live-config.service (backup, daca merge)"
         mkdir -p /etc/systemd/system/multi-user.target.wants
         ln -sf /lib/systemd/system/live-config.service \
             /etc/systemd/system/multi-user.target.wants/live-config.service
+
+        echo "[chroot] creez user carpatos LA BUILD (nu mai depind de live-config)"
+        if ! id carpatos >/dev/null 2>&1; then
+            useradd -m -s /bin/bash \
+                -G sudo,audio,video,plugdev,cdrom,floppy,dialout,users \
+                -c "CarpatOS Live" carpatos
+            passwd -d carpatos
+            echo "carpatos ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/carpatos
+            chmod 440 /etc/sudoers.d/carpatos
+        fi
+
+        echo "[chroot] /etc/hosts + /etc/machine-info"
+        cat > /etc/hosts <<EOFHOSTS
+127.0.0.1	localhost carpatos
+::1		localhost ip6-localhost ip6-loopback
+EOFHOSTS
+        cat > /etc/machine-info <<EOFMI
+PRETTY_HOSTNAME="CarpatOS Desktop"
+ICON_NAME=computer-laptop
+EOFMI
+
         # Sterg branding Calamares Debian (avem carpatos)
         rm -rf /etc/calamares/branding/debian
 
