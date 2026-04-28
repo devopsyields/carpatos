@@ -451,7 +451,8 @@ update_casper_initrd_append() {
     echo "LAYERFS_PATH=minimal.standard.live.carpatos.squashfs" \
         | $SUDO tee "$overlay/conf/conf.d/zz-carpatos-layer.conf" >/dev/null
 
-    # 2) Plymouth theme + plymouthd.conf (in initrd, vizibil de splash).
+    # 2) Plymouth theme + plymouthd.conf + default.plymouth symlink
+    #    (plymouth uses default.plymouth symlink as primary theme indicator).
     $SUDO mkdir -p "$overlay/etc/plymouth" \
         "$overlay/usr/share/plymouth/themes/carpatos"
     if [ -d "$rootfs/usr/share/plymouth/themes/carpatos" ]; then
@@ -460,11 +461,24 @@ update_casper_initrd_append() {
     fi
     printf '[Daemon]\nTheme=carpatos\nShowDelay=0\n' \
         | $SUDO tee "$overlay/etc/plymouth/plymouthd.conf" >/dev/null
+    $SUDO ln -sf carpatos/carpatos.plymouth \
+        "$overlay/usr/share/plymouth/themes/default.plymouth"
 
-    # 3) Cream cpio newc + append. find -mindepth 1 sa NU includem '.'
-    # ca root (care ar conflictua cu initramfs root).
-    info "    creez cpio overlay si append la initrd"
+    # 3) Padding la border 4 bytes inainte (kernel cpio reader needs
+    # alignment). Plus: cream cpio newc + append. find -mindepth 1 sa
+    # NU includem '.' ca root (care ar conflictua cu initramfs root).
+    info "    creez cpio overlay si append la initrd (cu padding)"
+    # Padding la 4-byte boundary. Original initrd dimension:
+    local orig_size
+    orig_size=$($SUDO stat -c %s "$initrd")
+    local pad_bytes=$(( (4 - (orig_size % 4)) % 4 ))
+    if [ "$pad_bytes" -gt 0 ]; then
+        $SUDO sh -c "head -c $pad_bytes /dev/zero >> '$initrd'"
+    fi
     $SUDO sh -c "(cd '$overlay' && find . -mindepth 1 | cpio -o -H newc --quiet) >> '$initrd'"
+    # Trailer null bytes la final ca sa nu lasam kernel sa caute alt
+    # archive dincolo:
+    $SUDO sh -c "head -c 512 /dev/zero >> '$initrd'"
     info "    /casper/initrd: $(du -h "$initrd" | cut -f1) (era $(du -h "$initrd.bak" 2>/dev/null | cut -f1 || echo "?") inainte)"
 }
 
