@@ -55,6 +55,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
         curl \
         ca-certificates \
+        # Debian-based ISO build (build-iso-debian.sh)
+        debootstrap \
+        debian-archive-keyring \
     && rm -rf /var/lib/apt/lists/*
 
 # Cross-compilers musl (prebuilt de la musl.cc) — pentru ambele arhitecturi
