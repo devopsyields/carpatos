@@ -240,6 +240,50 @@ ruleaza_hooks() {
     chroot_mount
 
     $SUDO chroot "$ROOTFS_DIR" /bin/bash -eu <<'CHROOT_EOF'
+        echo "[chroot] rasterize SVG wallpapers -> PNG (SVG render small in GNOME)"
+        if ! command -v rsvg-convert >/dev/null; then
+            apt-get install -y -qq librsvg2-bin 2>&1 | tail -1
+        fi
+        for w in carpatos-default carpatos-night; do
+            if [ -f /usr/share/backgrounds/carpatos/${w}.svg ]; then
+                rsvg-convert -w 3840 -h 2160 \
+                    /usr/share/backgrounds/carpatos/${w}.svg \
+                    -o /usr/share/backgrounds/carpatos/${w}.png
+            fi
+        done
+        # update gschema override la PNG (gnome-shell render SVG mic in unele cazuri)
+        sed -i "s|${PWD//\//\\/}carpatos-default\.svg|carpatos-default.png|g" \
+            /usr/share/glib-2.0/schemas/90_carpatos-defaults.gschema.override 2>/dev/null || true
+        sed -i "s|carpatos-default\.svg|carpatos-default.png|g; s|carpatos-night\.svg|carpatos-night.png|g" \
+            /usr/share/glib-2.0/schemas/90_carpatos-defaults.gschema.override 2>/dev/null || true
+
+        echo "[chroot] hide calamares-install-debian icon (avem propriul nostru)"
+        if [ -f /usr/share/applications/calamares-install-debian.desktop ]; then
+            cat > /usr/share/applications/calamares-install-debian.desktop <<EOFCID
+[Desktop Entry]
+Type=Application
+Name=Install Debian (deprecated)
+NoDisplay=true
+Hidden=true
+EOFCID
+        fi
+
+        echo "[chroot] schimb Calamares Exec la sudo -E (NOPASSWD) — pkexec cere parola"
+        cat > /usr/share/applications/calamares.desktop <<EOFCC
+[Desktop Entry]
+Type=Application
+Name=Instaleaza CarpatOS
+Name[ro]=Instaleaza CarpatOS
+GenericName=System Installer
+Comment=Instaleaza CarpatOS Desktop pe disk
+Comment[ro]=Instaleaza CarpatOS Desktop pe disk
+Exec=sudo -E calamares
+Icon=carpatos
+Terminal=false
+StartupNotify=true
+Categories=Qt;System;
+EOFCC
+
         echo "[chroot] glib-compile-schemas"
         glib-compile-schemas /usr/share/glib-2.0/schemas/ || true
 
