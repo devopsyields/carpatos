@@ -443,47 +443,14 @@ Presentation {
 }
 EOF
 
-    # settings.conf — spune ce branding sa foloseasca + module list
-    $SUDO mkdir -p "$ROOTFS_DIR/etc/calamares"
-    $SUDO tee "$ROOTFS_DIR/etc/calamares/settings.conf" >/dev/null <<'EOF'
----
-modules-search: [ local, /usr/lib/calamares/modules ]
-
-instances: []
-
-sequence:
-- show:
-  - welcome
-  - locale
-  - keyboard
-  - partition
-  - users
-  - summary
-- exec:
-  - partition
-  - mount
-  - unpackfs
-  - machineid
-  - fstab
-  - locale
-  - keyboard
-  - localecfg
-  - users
-  - hostname
-  - networkcfg
-  - hwclock
-  - services-systemd
-  - bootloader
-  - grubcfg
-  - umount
-- show:
-  - finished
-
-branding: carpatos
-
-prompt-install: true
-dont-chroot: false
-EOF
+    # NU mai suprascriu /etc/calamares/settings.conf — folosim sequence-ul
+    # din calamares-settings-debian (corect pentru module Debian, fara
+    # 'hostname' care nu exista in calamares Debian — duce la
+    # 'Calamares initialization failed').
+    # Doar override-uim linia 'branding:' la carpatos.
+    $SUDO sed -i "s|^branding:.*|branding: carpatos|" \
+        "$ROOTFS_DIR/etc/calamares/settings.conf"
+    $SUDO grep ^branding "$ROOTFS_DIR/etc/calamares/settings.conf"
 
     # Calamares .desktop entry — afisat in dock/menu
     $SUDO tee "$ROOTFS_DIR/usr/share/applications/calamares.desktop" >/dev/null <<'EOF'
