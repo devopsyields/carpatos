@@ -443,14 +443,25 @@ Presentation {
 }
 EOF
 
-    # NU mai suprascriu /etc/calamares/settings.conf — folosim sequence-ul
-    # din calamares-settings-debian (corect pentru module Debian, fara
-    # 'hostname' care nu exista in calamares Debian — duce la
-    # 'Calamares initialization failed').
+    # Pastram settings.conf-ul ORIGINAL din pachetul calamares-settings-debian
+    # (sequence corect cu module valide pentru Calamares Debian).
     # Doar override-uim linia 'branding:' la carpatos.
-    $SUDO sed -i "s|^branding:.*|branding: carpatos|" \
-        "$ROOTFS_DIR/etc/calamares/settings.conf"
-    $SUDO grep ^branding "$ROOTFS_DIR/etc/calamares/settings.conf"
+    chroot_mount
+    $SUDO chroot "$ROOTFS_DIR" /bin/bash -eu <<'SETBRAND'
+        # Daca settings.conf a fost overwrited de un run anterior, restauram
+        # din .deb. Daca e default debian, doar schimbam linia branding.
+        cp -a /etc/calamares/settings.conf /tmp/settings.conf.user 2>/dev/null || true
+        apt-get update -qq 2>&1 | tail -1
+        rm -f /tmp/calamares-settings-debian*.deb
+        cd /tmp && apt-get download calamares-settings-debian 2>&1 | tail -1
+        rm -rf /tmp/calsettings-extract
+        dpkg -x calamares-settings-debian*.deb /tmp/calsettings-extract
+        cp /tmp/calsettings-extract/etc/calamares/settings.conf /etc/calamares/settings.conf
+        sed -i 's|^branding:.*|branding: carpatos|' /etc/calamares/settings.conf
+        rm -rf /tmp/calsettings-extract /tmp/calamares-settings-debian*.deb
+        grep '^branding' /etc/calamares/settings.conf
+SETBRAND
+    chroot_umount
 
     # Calamares .desktop entry — afisat in dock/menu
     $SUDO tee "$ROOTFS_DIR/usr/share/applications/calamares.desktop" >/dev/null <<'EOF'
