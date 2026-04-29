@@ -344,6 +344,13 @@ EOFMI
         # Sterg branding Calamares Debian (avem carpatos)
         rm -rf /etc/calamares/branding/debian
 
+        # Patch calamares-bootloader-config: pe arm64 pachetul grub-efi
+        # nu exista (e amd64-only meta). Inlocuim cu grub-efi-arm64.
+        if [ -f /usr/share/calamares/helpers/calamares-bootloader-config ]; then
+            sed -i 's|apt-get -y install grub-efi$|apt-get -y install grub-efi-arm64|; s|apt-get -y install grub-efi |apt-get -y install grub-efi-arm64 |' \
+                /usr/share/calamares/helpers/calamares-bootloader-config
+        fi
+
         echo "[chroot] GDM autologin pentru live user"
         mkdir -p /etc/gdm3
         cat > /etc/gdm3/daemon.conf <<EOF2
