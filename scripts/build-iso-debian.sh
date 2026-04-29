@@ -89,6 +89,11 @@ DEBIAN_PACKAGES_INSTALLER=(
     calamares calamares-settings-debian
     # squashfs-tools necesar de Calamares pentru unsquashfs target
     squashfs-tools rsync
+    # cracklib + wamerican — Calamares users module check parola
+    # (fara astea: 'error loading the dictionary')
+    cracklib-runtime wamerican
+    # librsvg2-bin — rsvg-convert pentru SVG -> PNG wallpaper rasterize
+    librsvg2-bin
 )
 
 # ---- helpers ----
@@ -174,7 +179,9 @@ EOF
             bash-completion htop vim-tiny git \
             pipewire pipewire-pulse wireplumber \
             calamares calamares-settings-debian \
-            squashfs-tools rsync
+            squashfs-tools rsync \
+            cracklib-runtime wamerican \
+            librsvg2-bin
 
         # Curatare apt cache (sa fie ISO mai mic)
         apt-get clean
