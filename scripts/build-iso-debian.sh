@@ -181,7 +181,9 @@ EOF
             calamares calamares-settings-debian \
             squashfs-tools rsync \
             cracklib-runtime wamerican \
-            librsvg2-bin
+            librsvg2-bin \
+            e2fsprogs dosfstools gdisk btrfs-progs xfsprogs \
+            ntfs-3g exfatprogs cryptsetup lvm2
 
         # Curatare apt cache (sa fie ISO mai mic)
         apt-get clean
